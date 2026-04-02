@@ -1,0 +1,268 @@
+{
+  "project_id": "arab-dialect-classification",
+  "name": "Arabic Dialect Classification",
+  "walkthrough_path": "walkthrough.md",
+  "contract_path": "contract.json",
+  "runtime": {
+    "state_dir": ".autoopt/jobs",
+    "artifacts_dir": "artifacts",
+    "default_worker": "rule-based",
+    "max_turns_per_run": 12
+  },
+  "tool_registry": {
+    "discover_data": {
+      "adapter": "data",
+      "description": "Catalog candidate Arabic speech sources and their review risks.",
+      "command": "python3 scripts/data_pipeline.py discover --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/data/source_catalog.json"
+      ],
+      "budget_cost": 5
+    },
+    "validate_sources": {
+      "adapter": "data",
+      "description": "Filter candidate sources by license, checksum availability, and leakage risk.",
+      "command": "python3 scripts/data_pipeline.py validate --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/data/validated_sources.json"
+      ],
+      "budget_cost": 5
+    },
+    "prepare_dataset": {
+      "adapter": "data",
+      "description": "Create a cleaned training manifest with dialect balance metadata.",
+      "command": "python3 scripts/data_pipeline.py prepare --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/data/clean_dataset_manifest.json"
+      ],
+      "budget_cost": 15
+    },
+    "train_baseline": {
+      "adapter": "compute",
+      "description": "Train the baseline wav2vec-style encoder + linear classifier recipe.",
+      "command": "python3 scripts/train.py baseline --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/metrics/latest_train.json"
+      ],
+      "budget_cost": 120
+    },
+    "evaluate_candidate": {
+      "adapter": "evaluation",
+      "description": "Evaluate the latest training candidate on the frozen dev set.",
+      "command": "python3 scripts/evaluate.py --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/metrics/latest_eval.json"
+      ],
+      "budget_cost": 10
+    },
+    "reflect_on_results": {
+      "adapter": "evaluation",
+      "description": "Summarize failure modes from the latest evaluation before another expensive run.",
+      "command": "python3 scripts/reflect.py --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/analysis/reflection_1.json"
+      ],
+      "budget_cost": 5
+    },
+    "train_balanced_recipe": {
+      "adapter": "compute",
+      "description": "Launch an improved recipe with class-balanced sampling and domain-robust augmentation.",
+      "command": "python3 scripts/train.py balanced --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/metrics/latest_train.json"
+      ],
+      "budget_cost": 180
+    },
+    "evaluate_improved_candidate": {
+      "adapter": "evaluation",
+      "description": "Evaluate the improved candidate on the frozen dev set.",
+      "command": "python3 scripts/evaluate.py --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/metrics/latest_eval.json"
+      ],
+      "budget_cost": 10
+    }
+  },
+  "decision_rules": [
+    {
+      "name": "discover sources first",
+      "when": {
+        "missing_artifacts": [
+          "artifacts/data/source_catalog.json"
+        ]
+      },
+      "phase": "diagnose",
+      "tools": [
+        "discover_data"
+      ],
+      "summary": "Catalog candidate Arabic speech sources before spending compute.",
+      "followup_phase": "propose"
+    },
+    {
+      "name": "validate sources",
+      "when": {
+        "missing_artifacts": [
+          "artifacts/data/validated_sources.json"
+        ],
+        "present_artifacts": [
+          "artifacts/data/source_catalog.json"
+        ]
+      },
+      "phase": "propose",
+      "tools": [
+        "validate_sources"
+      ],
+      "summary": "Review source readiness, license status, and leakage risk before preparation.",
+      "followup_phase": "execute"
+    },
+    {
+      "name": "prepare clean dataset",
+      "when": {
+        "missing_artifacts": [
+          "artifacts/data/clean_dataset_manifest.json"
+        ],
+        "present_artifacts": [
+          "artifacts/data/validated_sources.json"
+        ]
+      },
+      "phase": "execute",
+      "tools": [
+        "prepare_dataset"
+      ],
+      "summary": "Build a cleaned dataset manifest with dialect balance metadata.",
+      "followup_phase": "execute"
+    },
+    {
+      "name": "train baseline",
+      "when": {
+        "missing_artifacts": [
+          "artifacts/metrics/latest_train.json"
+        ],
+        "present_artifacts": [
+          "artifacts/data/clean_dataset_manifest.json"
+        ]
+      },
+      "phase": "execute",
+      "tools": [
+        "train_baseline"
+      ],
+      "summary": "Run the baseline recipe before trying more expensive ideas.",
+      "followup_phase": "evaluate"
+    },
+    {
+      "name": "evaluate baseline",
+      "when": {
+        "missing_artifacts": [
+          "artifacts/metrics/latest_eval.json"
+        ],
+        "present_artifacts": [
+          "artifacts/metrics/latest_train.json"
+        ]
+      },
+      "phase": "evaluate",
+      "tools": [
+        "evaluate_candidate"
+      ],
+      "summary": "Evaluate the current candidate on the frozen dev benchmark.",
+      "followup_phase": "reflect"
+    },
+    {
+      "name": "done when target is reached",
+      "when": {
+        "best_metric_at_least": {
+          "name": "macro_f1",
+          "target": 0.82
+        },
+        "present_artifacts": [
+          "artifacts/metrics/latest_eval.json"
+        ]
+      },
+      "phase": "done",
+      "tools": [],
+      "summary": "The candidate meets the target metric and can be marked done."
+    },
+    {
+      "name": "reflect after a weak result",
+      "when": {
+        "best_metric_below": {
+          "name": "macro_f1",
+          "target": 0.82
+        },
+        "tool_attempts_lt": {
+          "tool": "reflect_on_results",
+          "count": 1
+        },
+        "present_artifacts": [
+          "artifacts/metrics/latest_eval.json"
+        ]
+      },
+      "phase": "reflect",
+      "tools": [
+        "reflect_on_results"
+      ],
+      "summary": "The candidate missed the bar; summarize likely failure modes before retrying.",
+      "followup_phase": "execute"
+    },
+    {
+      "name": "launch improved recipe",
+      "when": {
+        "best_metric_below": {
+          "name": "macro_f1",
+          "target": 0.82
+        },
+        "tool_attempts_lt": {
+          "tool": "train_balanced_recipe",
+          "count": 1
+        },
+        "present_artifacts": [
+          "artifacts/analysis/reflection_1.json"
+        ]
+      },
+      "phase": "execute",
+      "tools": [
+        "train_balanced_recipe"
+      ],
+      "summary": "Launch an improved recipe focused on class balance and domain robustness.",
+      "followup_phase": "evaluate"
+    },
+    {
+      "name": "evaluate improved candidate",
+      "when": {
+        "tool_attempts_gte": {
+          "tool": "train_balanced_recipe",
+          "count": 1
+        },
+        "tool_attempts_lt": {
+          "tool": "evaluate_improved_candidate",
+          "count": 1
+        },
+        "present_artifacts": [
+          "artifacts/metrics/train_balanced_recipe.json"
+        ]
+      },
+      "phase": "evaluate",
+      "tools": [
+        "evaluate_improved_candidate"
+      ],
+      "summary": "Evaluate the improved recipe on the frozen dev benchmark.",
+      "followup_phase": "done"
+    },
+    {
+      "name": "handoff after allowed retry budget",
+      "when": {
+        "best_metric_below": {
+          "name": "macro_f1",
+          "target": 0.82
+        },
+        "tool_attempts_gte": {
+          "tool": "evaluate_improved_candidate",
+          "count": 1
+        }
+      },
+      "phase": "handoff",
+      "tools": [],
+      "summary": "The project still misses target after the allowed retry budget; request human review.",
+      "requires_human": true
+    }
+  ]
+}

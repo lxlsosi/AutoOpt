@@ -1,0 +1,58 @@
+{
+  "project_id": "replace-me",
+  "objective": "Build an autonomous optimization loop for the current ML project without changing frozen evaluation rules.",
+  "goal": "Improve the primary metric while respecting data, compute, and review constraints.",
+  "success_metrics": [
+    {
+      "name": "primary_metric",
+      "target": 0.9,
+      "mode": "max",
+      "description": "Primary optimization target."
+    }
+  ],
+  "frozen_eval_sets": [
+    "eval/dev_gold_v1",
+    "eval/test_gold_v1"
+  ],
+  "constraints": [
+    "Do not modify frozen evaluation sets.",
+    "Do not use data without license review.",
+    "Checkpoint after every turn.",
+    "Summarize failures before retrying."
+  ],
+  "data_policy": {
+    "allowed_source_classes": [
+      "public",
+      "licensed",
+      "internal_approved"
+    ],
+    "blocked_source_classes": [
+      "unknown_license",
+      "private_scrape"
+    ],
+    "require_checksum": true,
+    "require_split_leakage_review": true
+  },
+  "compute_policy": {
+    "allowed_backends": [
+      "local",
+      "slurm",
+      "k8s",
+      "ray"
+    ],
+    "max_gpu_hours": 200,
+    "max_total_budget": 5000
+  },
+  "human_gates": [
+    {
+      "name": "high_spend_gate",
+      "condition": "next_step_cost_gt_500",
+      "action": "handoff"
+    },
+    {
+      "name": "unstable_eval_gate",
+      "condition": "eval_flaps_three_times",
+      "action": "handoff"
+    }
+  ]
+}

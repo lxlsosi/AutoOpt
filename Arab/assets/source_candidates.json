@@ -1,0 +1,42 @@
+[
+  {
+    "source_id": "broadcast_dialect_bundle",
+    "name": "Broadcast Arabic Dialect Bundle",
+    "dialects": ["egyptian", "gulf", "levantine", "msa"],
+    "domain": "broadcast",
+    "license_review_status": "approved",
+    "checksum_available": true,
+    "split_leakage_risk": "medium",
+    "ready_for_download": true
+  },
+  {
+    "source_id": "crowd_mobile_utterances",
+    "name": "Crowd Mobile Utterances",
+    "dialects": ["egyptian", "levantine", "maghrebi", "iraqi"],
+    "domain": "mobile",
+    "license_review_status": "approved",
+    "checksum_available": true,
+    "split_leakage_risk": "low",
+    "ready_for_download": true
+  },
+  {
+    "source_id": "web_scraped_private_calls",
+    "name": "Web-Scraped Private Calls",
+    "dialects": ["gulf", "iraqi"],
+    "domain": "telephony",
+    "license_review_status": "blocked",
+    "checksum_available": false,
+    "split_leakage_risk": "high",
+    "ready_for_download": false
+  },
+  {
+    "source_id": "community_voice_notes",
+    "name": "Community Voice Notes",
+    "dialects": ["sudanese", "maghrebi", "msa"],
+    "domain": "social",
+    "license_review_status": "manual_review_required",
+    "checksum_available": false,
+    "split_leakage_risk": "medium",
+    "ready_for_download": false
+  }
+]

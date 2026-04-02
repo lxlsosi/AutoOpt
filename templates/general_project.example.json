@@ -1,0 +1,101 @@
+{
+  "project_id": "replace-me",
+  "name": "Generic AutoOpt Project",
+  "walkthrough_path": "walkthrough.md",
+  "contract_path": "contract.json",
+  "runtime": {
+    "state_dir": ".autoopt/jobs",
+    "artifacts_dir": "artifacts",
+    "default_worker": "rule-based",
+    "max_turns_per_run": 8
+  },
+  "tool_registry": {
+    "diagnose_project": {
+      "adapter": "data",
+      "description": "Inspect the current project state and identify the next bottleneck.",
+      "command": "python3 scripts/diagnose.py --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/analysis/diagnosis.json"
+      ],
+      "budget_cost": 5
+    },
+    "run_candidate": {
+      "adapter": "compute",
+      "description": "Launch the next training candidate on the approved backend.",
+      "command": "python3 scripts/train.py --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/metrics/latest_train.json"
+      ],
+      "budget_cost": 100
+    },
+    "evaluate_candidate": {
+      "adapter": "evaluation",
+      "description": "Evaluate the latest candidate on the frozen benchmark.",
+      "command": "python3 scripts/evaluate.py --project-root {project_root} --result-json {result_json}",
+      "produces_artifacts": [
+        "artifacts/metrics/latest_eval.json"
+      ],
+      "budget_cost": 10
+    }
+  },
+  "decision_rules": [
+    {
+      "name": "start with diagnosis",
+      "when": {
+        "missing_artifacts": [
+          "artifacts/analysis/diagnosis.json"
+        ]
+      },
+      "phase": "diagnose",
+      "tools": [
+        "diagnose_project"
+      ],
+      "summary": "Diagnose the project before spending compute.",
+      "followup_phase": "execute"
+    },
+    {
+      "name": "run first candidate",
+      "when": {
+        "missing_artifacts": [
+          "artifacts/metrics/latest_train.json"
+        ],
+        "present_artifacts": [
+          "artifacts/analysis/diagnosis.json"
+        ]
+      },
+      "phase": "execute",
+      "tools": [
+        "run_candidate"
+      ],
+      "summary": "Launch the next candidate.",
+      "followup_phase": "evaluate"
+    },
+    {
+      "name": "evaluate first candidate",
+      "when": {
+        "missing_artifacts": [
+          "artifacts/metrics/latest_eval.json"
+        ],
+        "present_artifacts": [
+          "artifacts/metrics/latest_train.json"
+        ]
+      },
+      "phase": "evaluate",
+      "tools": [
+        "evaluate_candidate"
+      ],
+      "summary": "Evaluate before planning the next iteration.",
+      "followup_phase": "reflect"
+    },
+    {
+      "name": "fallback handoff",
+      "when": {
+        "always": true
+      },
+      "phase": "handoff",
+      "tools": [],
+      "summary": "No rule matched cleanly; hand off to a human reviewer.",
+      "requires_human": true
+    }
+  ]
+}

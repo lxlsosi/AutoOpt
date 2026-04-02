@@ -1,0 +1,67 @@
+{
+  "project_id": "arab-dialect-classification",
+  "objective": "Build an autonomous workflow for Arabic dialect classification that can improve a frozen benchmark while respecting data and compute constraints.",
+  "goal": "Reach macro_f1 >= 0.82 on the frozen dev benchmark without changing the evaluation protocol.",
+  "success_metrics": [
+    {
+      "name": "macro_f1",
+      "target": 0.82,
+      "mode": "max",
+      "description": "Primary project metric."
+    },
+    {
+      "name": "rare_dialect_recall",
+      "target": 0.7,
+      "mode": "max",
+      "description": "Guardrail for underrepresented dialects."
+    }
+  ],
+  "frozen_eval_sets": [
+    "arab_dev_gold_v1",
+    "arab_test_gold_v1"
+  ],
+  "constraints": [
+    "Do not change the frozen dev or test benchmark.",
+    "Do not ingest sources without license review.",
+    "Do not run more than two expensive training attempts without human approval.",
+    "Always produce a confusion-matrix-style analysis before another retry."
+  ],
+  "data_policy": {
+    "allowed_source_classes": [
+      "public_approved",
+      "licensed_internal"
+    ],
+    "blocked_source_classes": [
+      "unknown_license",
+      "scraped_private_audio"
+    ],
+    "require_checksum": true,
+    "require_dedup": true,
+    "require_split_leakage_review": true
+  },
+  "compute_policy": {
+    "allowed_backends": [
+      "local-mock",
+      "gpu-batch"
+    ],
+    "max_gpu_hours": 120,
+    "max_total_budget": 1500
+  },
+  "human_gates": [
+    {
+      "name": "license_gate",
+      "condition": "source_license_unknown",
+      "action": "handoff"
+    },
+    {
+      "name": "budget_gate",
+      "condition": "budget_spent_gt_1000",
+      "action": "handoff"
+    },
+    {
+      "name": "retry_gate",
+      "condition": "two_expensive_recipes_without_target",
+      "action": "handoff"
+    }
+  ]
+}
