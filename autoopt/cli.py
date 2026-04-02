@@ -6,6 +6,7 @@ from pathlib import Path
 
 from autoopt.orchestrator import Orchestrator
 from autoopt.project_loader import load_project
+from autoopt.remote import SSHRemoteManager
 from autoopt.state_store import FileStateStore
 from autoopt.workers import OpenAIResponsesWorker, RuleBasedWorker
 
@@ -53,6 +54,27 @@ def inspect_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def remote_bootstrap_command(args: argparse.Namespace) -> int:
+    spec, _, _ = load_project(args.project)
+    manager = SSHRemoteManager(spec)
+    result = manager.bootstrap_host(args.host)
+    print(
+        json.dumps(
+            {
+                "host": result.host_name,
+                "ssh_target": result.ssh_target,
+                "remote_workspace_root": result.remote_workspace_root,
+                "remote_project_root": result.remote_project_root,
+                "conda_env_name": result.conda_env_name,
+                "env_yaml_remote": result.env_yaml_remote,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AutoOpt autonomous algorithm engineer")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
@@ -69,6 +91,14 @@ def main() -> None:
     inspect_parser.add_argument("--project", required=True, help="Path to project.json")
     inspect_parser.add_argument("--job-id", required=True, help="Stable job identifier")
     inspect_parser.set_defaults(func=inspect_command)
+
+    remote_parser = subparsers.add_parser("remote", help="Bootstrap or inspect remote execution hosts")
+    remote_subparsers = remote_parser.add_subparsers(dest="remote_subcommand", required=True)
+
+    remote_bootstrap_parser = remote_subparsers.add_parser("bootstrap", help="Sync code/data and create the conda env on a remote host")
+    remote_bootstrap_parser.add_argument("--project", required=True, help="Path to project.json")
+    remote_bootstrap_parser.add_argument("--host", required=True, help="Execution host name from execution_topology.hosts")
+    remote_bootstrap_parser.set_defaults(func=remote_bootstrap_command)
 
     args = parser.parse_args()
     raise SystemExit(args.func(args))

@@ -44,6 +44,29 @@
       "local-mock",
       "gpu-batch"
     ],
+    "allowed_hosts": [
+      "Physical13",
+      "ECO01",
+      "ECO04",
+      "ECOschool"
+    ],
+    "host_capabilities": {
+      "ECO01": {
+        "gpu_type": "A100",
+        "gpu_count": 8,
+        "shared_storage_root": "/data"
+      },
+      "ECO04": {
+        "gpu_type": "A100",
+        "gpu_count": 8,
+        "shared_storage_root": "/data"
+      },
+      "ECOschool": {
+        "gpu_type": "A100",
+        "gpu_count": 8,
+        "shared_storage_root": "/data"
+      }
+    },
     "max_gpu_hours": 120,
     "max_total_budget": 1500
   },

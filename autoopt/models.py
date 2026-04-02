@@ -76,6 +76,9 @@ class ToolSpec:
     budget_cost: float = 0.0
     requires_approval: bool = False
     metric_scope: str = "auxiliary"
+    workload_profile: str = "default"
+    candidate_hosts: list[str] = field(default_factory=list)
+    dispatch_strategy: str = "least_used"
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -88,6 +91,9 @@ class ToolSpec:
             "budget_cost",
             "requires_approval",
             "metric_scope",
+            "workload_profile",
+            "candidate_hosts",
+            "dispatch_strategy",
         }
         metadata = {key: value for key, value in data.items() if key not in known}
         return cls(
@@ -102,6 +108,67 @@ class ToolSpec:
                 "metric_scope",
                 "evaluation" if data["adapter"] == "evaluation" else "auxiliary",
             ),
+            workload_profile=data.get("workload_profile", "default"),
+            candidate_hosts=data.get("candidate_hosts", []),
+            dispatch_strategy=data.get("dispatch_strategy", "least_used"),
+            metadata=metadata,
+        )
+
+
+@dataclass
+class ExecutionHost:
+    name: str
+    mode: str = "local"
+    ssh_target: str | None = None
+    project_root: str | None = None
+    roles: list[str] = field(default_factory=list)
+    local_aliases: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, name: str, data: dict[str, Any]) -> "ExecutionHost":
+        known = {"mode", "ssh_target", "project_root", "roles", "local_aliases"}
+        metadata = {key: value for key, value in data.items() if key not in known}
+        return cls(
+            name=name,
+            mode=data.get("mode", "local"),
+            ssh_target=data.get("ssh_target"),
+            project_root=data.get("project_root"),
+            roles=data.get("roles", []),
+            local_aliases=data.get("local_aliases", []),
+            metadata=metadata,
+        )
+
+
+@dataclass
+class ExecutionTopology:
+    controller_host: str | None = None
+    default_local_host: str | None = None
+    default_compute_hosts: list[str] = field(default_factory=list)
+    routing_profiles: dict[str, list[str]] = field(default_factory=dict)
+    hosts: dict[str, ExecutionHost] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ExecutionTopology":
+        known = {
+            "controller_host",
+            "default_local_host",
+            "default_compute_hosts",
+            "routing_profiles",
+            "hosts",
+        }
+        metadata = {key: value for key, value in data.items() if key not in known}
+        hosts = {
+            name: ExecutionHost.from_dict(name, host_data)
+            for name, host_data in data.get("hosts", {}).items()
+        }
+        return cls(
+            controller_host=data.get("controller_host"),
+            default_local_host=data.get("default_local_host", data.get("controller_host")),
+            default_compute_hosts=data.get("default_compute_hosts", []),
+            routing_profiles=data.get("routing_profiles", {}),
+            hosts=hosts,
             metadata=metadata,
         )
 
@@ -139,6 +206,7 @@ class ProjectSpec:
     walkthrough_path: str
     contract_path: str
     runtime: dict[str, Any]
+    execution_topology: ExecutionTopology
     tool_registry: dict[str, ToolSpec]
     decision_rules: list[DecisionRule]
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -167,6 +235,8 @@ class ToolExecutionOutcome:
     hypotheses: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     budget_cost: float = 0.0
+    execution_host: str | None = None
+    execution_mode: str | None = None
     exit_code: int = 0
     stdout: str = ""
     stderr: str = ""
@@ -196,6 +266,8 @@ class JobState:
     budget_spent: float = 0.0
     approval_required: bool = False
     blocked_reason: str | None = None
+    last_execution_target: str | None = None
+    execution_history: list[dict[str, Any]] = field(default_factory=list)
     phase_history: list[dict[str, Any]] = field(default_factory=list)
     checkpoints: list[dict[str, Any]] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)

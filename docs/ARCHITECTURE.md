@@ -16,6 +16,8 @@
 2. `contract.json`
 3. `project.json`
 
+如果项目要跨机器执行，建议把 `execution_topology` 也当成稳定配置的一部分，直接放进 `project.json`。
+
 ### `contract.json`
 
 定义稳定约束：
@@ -35,6 +37,7 @@
 - `tool_registry`
 - `decision_rules`
 - `runtime`
+- `execution_topology`
 
 工具注册表示例：
 
@@ -90,10 +93,38 @@
 - `approval_required`
 - `hypotheses_tried`
 - `blocked_reason`
+- `last_execution_target`
+- `execution_history`
 - `phase_history`
 - `checkpoints`
 
-## 4. 推荐接入方式
+## 4. 执行拓扑
+
+推荐把机器分成两类：
+
+- 控制机：跑 orchestrator、worker、state store、summary
+- 执行机：跑数据下载、训练、验证，或者承接提交后的异步 job
+
+典型拓扑：
+
+```json
+{
+  "execution_topology": {
+    "controller_host": "Physical13",
+    "default_local_host": "Physical13",
+    "default_compute_hosts": ["ECO01", "ECO04", "ECOschool"],
+    "routing_profiles": {
+      "data_ops": ["Physical13"],
+      "evaluation": ["Physical13"],
+      "gpu_train": ["ECO01", "ECO04", "ECOschool"]
+    }
+  }
+}
+```
+
+关键点不是让 orchestrator 直接长驻 GPU 机器，而是让 orchestrator 只负责决策，把目标机和选路理由写进状态，再由包装脚本或平台 adapter 提交实际任务。
+
+## 5. 推荐接入方式
 
 ### 数据侧
 
@@ -116,7 +147,7 @@
 - per-class recall
 - 不合格原因定位
 
-## 5. 为什么先做 rule-based
+## 6. 为什么先做 rule-based
 
 `rule-based worker` 的价值不是替代 LLM，而是先把下面这些稳定件搭好：
 
@@ -128,14 +159,21 @@
 
 这些稳定后，再把 worker 换成 Codex / OpenAI Responses，系统才不会“一换脑子就散架”。
 
-## 6. 真接生产时该替换什么
+## 7. 真接生产时该替换什么
 
 - 把 `ShellAdapter` 替换成内部平台 adapter
 - 把 mock `scripts/*.py` 替换成真实提交/轮询脚本
 - 把 `OpenAIResponsesWorker` 的 prompt 变成你们自己的 agent contract
 - 把 `.autoopt/jobs` 换成 DB / Redis / Postgres / Temporal state
 
-## 7. 人工 Gate 建议
+如果你们是 `Physical13 -> ECO01/ECO04/ECOschool` 这种架构，比较自然的替换方式是：
+
+- 保留 orchestrator 在 `Physical13`
+- `train.py` 之类脚本读取 `AUTOOPT_EXECUTION_HOST`
+- 由脚本决定 `ssh`、`sbatch`、`ray job submit` 或内部调度接口
+- 结果摘要和 job handle 回写本地 `result_json`
+
+## 8. 人工 Gate 建议
 
 - 外部数据源 license 不确定
 - 要花大额 GPU 预算

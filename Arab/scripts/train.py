@@ -24,7 +24,13 @@ def load_manifest(project_root: Path) -> dict:
     return json.loads(manifest_path.read_text(encoding="utf-8"))
 
 
-def baseline(project_root: Path, result_json: Path) -> None:
+def baseline(
+    project_root: Path,
+    result_json: Path,
+    execution_host: str,
+    execution_mode: str,
+    execution_project_root: str,
+) -> None:
     manifest = load_manifest(project_root)
     train_metrics = {
         "macro_f1": 0.74,
@@ -35,7 +41,10 @@ def baseline(project_root: Path, result_json: Path) -> None:
         "generated_at": utc_now(),
         "recipe": "baseline",
         "dataset_version": manifest["dataset_version"],
-        "gpu_job_id": "gpu-baseline-001",
+        "gpu_job_id": f"{execution_host}-gpu-baseline-001",
+        "execution_host": execution_host,
+        "execution_mode": execution_mode,
+        "execution_project_root": execution_project_root,
         "hyperparameters": {
             "encoder": "wav2vec-style-base",
             "classifier": "linear",
@@ -59,21 +68,30 @@ def baseline(project_root: Path, result_json: Path) -> None:
             },
             "metrics": train_metrics,
             "dataset_version": manifest["dataset_version"],
-            "gpu_job_id": "gpu-baseline-001",
+            "gpu_job_id": f"{execution_host}-gpu-baseline-001",
+            "execution_host": execution_host,
+            "execution_mode": execution_mode,
             "hypotheses": [
                 "Natural sampling under-serves rare dialects.",
                 "A stronger recipe should target dialect balance and domain robustness."
             ],
             "notes": [
                 "Baseline is intentionally cheap and mainly diagnostic.",
-                "Sudanese and Maghrebi are expected error hotspots."
+                "Sudanese and Maghrebi are expected error hotspots.",
+                f"Training is routed through {execution_host} ({execution_mode})."
             ],
             "budget_cost": 120
         },
     )
 
 
-def balanced(project_root: Path, result_json: Path) -> None:
+def balanced(
+    project_root: Path,
+    result_json: Path,
+    execution_host: str,
+    execution_mode: str,
+    execution_project_root: str,
+) -> None:
     manifest = load_manifest(project_root)
     train_metrics = {
         "macro_f1": 0.83,
@@ -84,7 +102,10 @@ def balanced(project_root: Path, result_json: Path) -> None:
         "generated_at": utc_now(),
         "recipe": "balanced_recipe",
         "dataset_version": manifest["dataset_version"],
-        "gpu_job_id": "gpu-balanced-002",
+        "gpu_job_id": f"{execution_host}-gpu-balanced-002",
+        "execution_host": execution_host,
+        "execution_mode": execution_mode,
+        "execution_project_root": execution_project_root,
         "hyperparameters": {
             "encoder": "wav2vec-style-base",
             "classifier": "mlp",
@@ -109,14 +130,17 @@ def balanced(project_root: Path, result_json: Path) -> None:
             },
             "metrics": train_metrics,
             "dataset_version": manifest["dataset_version"],
-            "gpu_job_id": "gpu-balanced-002",
+            "gpu_job_id": f"{execution_host}-gpu-balanced-002",
+            "execution_host": execution_host,
+            "execution_mode": execution_mode,
             "hypotheses": [
                 "Balanced sampling reduces bias toward Egyptian and MSA.",
                 "Domain augmentation improves robustness outside broadcast speech."
             ],
             "notes": [
                 "This is the last expensive retry before a human gate.",
-                "The recipe specifically targets low-resource dialect stability."
+                "The recipe specifically targets low-resource dialect stability.",
+                f"Training is routed through {execution_host} ({execution_mode})."
             ],
             "budget_cost": 180
         },
@@ -127,6 +151,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("recipe", choices=["baseline", "balanced"])
     parser.add_argument("--project-root", required=True)
+    parser.add_argument("--execution-host", default="local")
+    parser.add_argument("--execution-mode", default="local")
+    parser.add_argument("--execution-project-root", default="")
+    parser.add_argument("--ssh-target", default="")
     parser.add_argument("--result-json", required=True)
     args = parser.parse_args()
 
@@ -134,9 +162,21 @@ def main() -> None:
     result_json = Path(args.result_json).resolve()
 
     if args.recipe == "baseline":
-        baseline(project_root, result_json)
+        baseline(
+            project_root,
+            result_json,
+            args.execution_host,
+            args.execution_mode,
+            args.execution_project_root,
+        )
     else:
-        balanced(project_root, result_json)
+        balanced(
+            project_root,
+            result_json,
+            args.execution_host,
+            args.execution_mode,
+            args.execution_project_root,
+        )
 
 
 if __name__ == "__main__":

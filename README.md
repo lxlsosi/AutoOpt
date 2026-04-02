@@ -24,6 +24,7 @@ walkthrough.md            根目录 walkthrough 模板
 
 - `contract.json`: 项目目标、预算、约束、评测、数据策略、人工闸门
 - `project.json`: tool registry、phase 规则、运行时配置
+- `execution_topology`: 控制机、执行机、路由 profile、主机角色
 - `JobState`: 任务状态，持久化在 `<project>/.autoopt/jobs/<job_id>.json`
 - `artifacts/`: 数据、分析、训练、评测产物
 
@@ -42,6 +43,7 @@ pip install -e .
 
 autoopt run --project Arab/project.json --job-id arab-demo --max-turns 12
 autoopt inspect --project Arab/project.json --job-id arab-demo
+autoopt remote bootstrap --project Arab/project.json --host ECO01
 ```
 
 上面的 `Arab/` 是一个可本地跑通的 mock 项目。它会生成以下几类 artifact：
@@ -69,6 +71,45 @@ OPENAI_API_KEY=... autoopt run \
 - 输出是结构化 JSON 决策
 - 默认 `store=false`
 - 预留了 `context_management` compaction 参数
+
+## 控制机与 GPU 执行机
+
+推荐把 `AutoOpt` 按“两层”部署：
+
+- 控制层：在装好 Codex / OpenAI 凭证的机器上跑 `autoopt run`
+- 执行层：把真正的数据处理、训练、验证任务路由到指定机器
+
+框架现在支持在 `project.json` 里声明 `execution_topology`，并把每次工具调用的目标机写入 state。
+
+对于 compute 工具，执行器会在本地运行你的包装脚本，同时注入这些占位符：
+
+- `{execution_host}`
+- `{execution_mode}`
+- `{execution_project_root}`
+- `{ssh_target}`
+
+以及对应环境变量：
+
+- `AUTOOPT_EXECUTION_HOST`
+- `AUTOOPT_EXECUTION_MODE`
+- `AUTOOPT_EXECUTION_PROJECT_ROOT`
+- `AUTOOPT_SSH_TARGET`
+
+这样你可以在 `Physical13` 上跑 orchestrator，再由脚本决定是本地小规模验证，还是通过 `ssh` / 队列系统把训练提交到 `ECO01`、`ECO04`、`ECOschool`。
+
+建议第一次先在 `Physical13` 上执行：
+
+```bash
+autoopt remote bootstrap --project Arab/project.json --host ECO01
+autoopt remote bootstrap --project Arab/project.json --host ECO04
+autoopt remote bootstrap --project Arab/project.json --host ECOschool
+```
+
+这会做三件事：
+
+- 导出当前激活的 conda 环境
+- 同步代码和项目数据到远端 workspace
+- 在远端创建或更新同名 conda env
 
 ## 你接真实项目时的建议
 

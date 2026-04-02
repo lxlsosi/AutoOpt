@@ -145,6 +145,10 @@ class OpenAIResponsesWorker(Worker):
                 "produces_artifacts": tool.produces_artifacts,
                 "budget_cost": tool.budget_cost,
                 "requires_approval": tool.requires_approval,
+                "metric_scope": tool.metric_scope,
+                "workload_profile": tool.workload_profile,
+                "candidate_hosts": tool.candidate_hosts,
+                "dispatch_strategy": tool.dispatch_strategy,
             }
             for name, tool in spec.tool_registry.items()
         }
@@ -152,6 +156,20 @@ class OpenAIResponsesWorker(Worker):
             "project": {
                 "project_id": spec.project_id,
                 "name": spec.name,
+            },
+            "execution_topology": {
+                "controller_host": spec.execution_topology.controller_host,
+                "default_local_host": spec.execution_topology.default_local_host,
+                "default_compute_hosts": spec.execution_topology.default_compute_hosts,
+                "routing_profiles": spec.execution_topology.routing_profiles,
+                "hosts": {
+                    name: {
+                        "mode": host.mode,
+                        "roles": host.roles,
+                        "local_aliases": host.local_aliases,
+                    }
+                    for name, host in spec.execution_topology.hosts.items()
+                },
             },
             "contract": {
                 "objective": contract.objective,

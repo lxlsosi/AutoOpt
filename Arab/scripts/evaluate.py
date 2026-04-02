@@ -22,6 +22,9 @@ def write_json(path: Path, data: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-root", required=True)
+    parser.add_argument("--execution-host", default="local")
+    parser.add_argument("--execution-mode", default="local")
+    parser.add_argument("--execution-project-root", default="")
     parser.add_argument("--result-json", required=True)
     args = parser.parse_args()
 
@@ -81,9 +84,12 @@ def main() -> None:
             },
             "metrics": eval_metrics,
             "eval_suite_version": "arab_dev_gold_v1",
+            "execution_host": args.execution_host,
+            "execution_mode": args.execution_mode,
             "notes": [
                 analysis["diagnosis"],
-                f"Primary confusion pairs: {analysis['largest_confusions']}"
+                f"Primary confusion pairs: {analysis['largest_confusions']}",
+                f"Evaluation routed to {args.execution_host} ({args.execution_mode})."
             ],
             "budget_cost": 10
         },

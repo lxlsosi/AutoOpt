@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from autoopt.models import DecisionRule, ProjectContract, ProjectSpec, ToolSpec
+from autoopt.models import DecisionRule, ExecutionTopology, ProjectContract, ProjectSpec, ToolSpec
 
 
 def load_project(project_path: str) -> tuple[ProjectSpec, ProjectContract, str]:
@@ -39,6 +39,7 @@ def load_project(project_path: str) -> tuple[ProjectSpec, ProjectContract, str]:
         walkthrough_path=str(walkthrough_path),
         contract_path=str(contract_path),
         runtime=data.get("runtime", {}),
+        execution_topology=ExecutionTopology.from_dict(data.get("execution_topology", {})),
         tool_registry=tool_registry,
         decision_rules=decision_rules,
         metadata=metadata,

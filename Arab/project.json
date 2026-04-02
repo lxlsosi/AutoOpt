@@ -7,80 +7,205 @@
     "state_dir": ".autoopt/jobs",
     "artifacts_dir": "artifacts",
     "default_worker": "rule-based",
-    "max_turns_per_run": 12
+    "max_turns_per_run": 12,
+    "source_conda_env": "AutoOPT"
+  },
+  "execution_topology": {
+    "controller_host": "Physical13",
+    "default_local_host": "Physical13",
+    "default_compute_hosts": [
+      "ECO01",
+      "ECO04",
+      "ECOschool"
+    ],
+    "routing_profiles": {
+      "data_ops": [
+        "Physical13"
+      ],
+      "evaluation": [
+        "Physical13"
+      ],
+      "small_gpu_validate": [
+        "Physical13"
+      ],
+      "gpu_train": [
+        "ECO01",
+        "ECO04",
+        "ECOschool"
+      ]
+    },
+    "hosts": {
+      "Physical13": {
+        "mode": "local",
+        "roles": [
+          "controller",
+          "data",
+          "evaluation",
+          "small_gpu_validate"
+        ],
+        "local_aliases": [
+          "Physical13",
+          "physical13"
+        ],
+        "codex_ready": true,
+        "small_gpu_ok": true
+      },
+      "ECO01": {
+        "mode": "dispatch",
+        "roles": [
+          "gpu_train"
+        ],
+        "ssh_target": "ECO01",
+        "project_root": "/data/AutoOpt/Arab",
+        "workspace_root": "/data/AutoOpt",
+        "conda_env_name": "AutoOPT",
+        "gpu_type": "A100",
+        "gpu_count": 8,
+        "shared_storage_root": "/data",
+        "bootstrap": {
+          "sync_paths": [
+            "autoopt",
+            "Arab",
+            "README.md",
+            "pyproject.toml",
+            "docs",
+            "templates",
+            "walkthrough.md"
+          ]
+        }
+      },
+      "ECO04": {
+        "mode": "dispatch",
+        "roles": [
+          "gpu_train"
+        ],
+        "ssh_target": "ECO04",
+        "project_root": "/data/AutoOpt/Arab",
+        "workspace_root": "/data/AutoOpt",
+        "conda_env_name": "AutoOPT",
+        "gpu_type": "A100",
+        "gpu_count": 8,
+        "shared_storage_root": "/data",
+        "bootstrap": {
+          "sync_paths": [
+            "autoopt",
+            "Arab",
+            "README.md",
+            "pyproject.toml",
+            "docs",
+            "templates",
+            "walkthrough.md"
+          ]
+        }
+      },
+      "ECOschool": {
+        "mode": "dispatch",
+        "roles": [
+          "gpu_train"
+        ],
+        "ssh_target": "ECOschool",
+        "project_root": "/data/AutoOpt/Arab",
+        "workspace_root": "/data/AutoOpt",
+        "conda_env_name": "AutoOPT",
+        "gpu_type": "A100",
+        "gpu_count": 8,
+        "shared_storage_root": "/data",
+        "bootstrap": {
+          "sync_paths": [
+            "autoopt",
+            "Arab",
+            "README.md",
+            "pyproject.toml",
+            "docs",
+            "templates",
+            "walkthrough.md"
+          ]
+        }
+      }
+    }
   },
   "tool_registry": {
     "discover_data": {
       "adapter": "data",
       "description": "Catalog candidate Arabic speech sources and their review risks.",
-      "command": "python3 scripts/data_pipeline.py discover --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/data_pipeline.py discover --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/data/source_catalog.json"
       ],
-      "budget_cost": 5
+      "budget_cost": 5,
+      "workload_profile": "data_ops"
     },
     "validate_sources": {
       "adapter": "data",
       "description": "Filter candidate sources by license, checksum availability, and leakage risk.",
-      "command": "python3 scripts/data_pipeline.py validate --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/data_pipeline.py validate --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/data/validated_sources.json"
       ],
-      "budget_cost": 5
+      "budget_cost": 5,
+      "workload_profile": "data_ops"
     },
     "prepare_dataset": {
       "adapter": "data",
       "description": "Create a cleaned training manifest with dialect balance metadata.",
-      "command": "python3 scripts/data_pipeline.py prepare --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/data_pipeline.py prepare --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/data/clean_dataset_manifest.json"
       ],
-      "budget_cost": 15
+      "budget_cost": 15,
+      "workload_profile": "data_ops"
     },
     "train_baseline": {
       "adapter": "compute",
       "description": "Train the baseline wav2vec-style encoder + linear classifier recipe.",
-      "command": "python3 scripts/train.py baseline --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/train.py baseline --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --ssh-target {ssh_target} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/latest_train.json"
       ],
-      "budget_cost": 120
+      "budget_cost": 120,
+      "workload_profile": "gpu_train"
     },
     "evaluate_candidate": {
       "adapter": "evaluation",
       "description": "Evaluate the latest training candidate on the frozen dev set.",
-      "command": "python3 scripts/evaluate.py --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/evaluate.py --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/latest_eval.json"
       ],
-      "budget_cost": 10
+      "budget_cost": 10,
+      "workload_profile": "small_gpu_validate",
+      "metric_scope": "evaluation"
     },
     "reflect_on_results": {
       "adapter": "evaluation",
       "description": "Summarize failure modes from the latest evaluation before another expensive run.",
-      "command": "python3 scripts/reflect.py --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/reflect.py --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/analysis/reflection_1.json"
       ],
-      "budget_cost": 5
+      "budget_cost": 5,
+      "workload_profile": "evaluation"
     },
     "train_balanced_recipe": {
       "adapter": "compute",
       "description": "Launch an improved recipe with class-balanced sampling and domain-robust augmentation.",
-      "command": "python3 scripts/train.py balanced --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/train.py balanced --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --ssh-target {ssh_target} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/latest_train.json"
       ],
-      "budget_cost": 180
+      "budget_cost": 180,
+      "workload_profile": "gpu_train"
     },
     "evaluate_improved_candidate": {
       "adapter": "evaluation",
       "description": "Evaluate the improved candidate on the frozen dev set.",
-      "command": "python3 scripts/evaluate.py --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/evaluate.py --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/latest_eval.json"
       ],
-      "budget_cost": 10
+      "budget_cost": 10,
+      "workload_profile": "small_gpu_validate",
+      "metric_scope": "evaluation"
     }
   },
   "decision_rules": [

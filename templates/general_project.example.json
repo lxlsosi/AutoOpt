@@ -7,7 +7,81 @@
     "state_dir": ".autoopt/jobs",
     "artifacts_dir": "artifacts",
     "default_worker": "rule-based",
-    "max_turns_per_run": 8
+    "max_turns_per_run": 8,
+    "source_conda_env": "AutoOPT"
+  },
+  "execution_topology": {
+    "controller_host": "controller",
+    "default_local_host": "controller",
+    "default_compute_hosts": [
+      "gpu01",
+      "gpu02"
+    ],
+    "routing_profiles": {
+      "data_ops": [
+        "controller"
+      ],
+      "evaluation": [
+        "controller"
+      ],
+      "gpu_train": [
+        "gpu01",
+        "gpu02"
+      ]
+    },
+    "hosts": {
+      "controller": {
+        "mode": "local",
+        "roles": [
+          "controller",
+          "data",
+          "evaluation"
+        ],
+        "local_aliases": [
+          "controller"
+        ]
+      },
+      "gpu01": {
+        "mode": "dispatch",
+        "roles": [
+          "gpu_train"
+        ],
+        "ssh_target": "gpu01",
+        "project_root": "~/AutoOpt/my-project",
+        "workspace_root": "~/AutoOpt",
+        "conda_env_name": "AutoOPT",
+        "bootstrap": {
+          "sync_paths": [
+            "autoopt",
+            "my-project",
+            "README.md",
+            "pyproject.toml",
+            "docs",
+            "templates"
+          ]
+        }
+      },
+      "gpu02": {
+        "mode": "dispatch",
+        "roles": [
+          "gpu_train"
+        ],
+        "ssh_target": "gpu02",
+        "project_root": "~/AutoOpt/my-project",
+        "workspace_root": "~/AutoOpt",
+        "conda_env_name": "AutoOPT",
+        "bootstrap": {
+          "sync_paths": [
+            "autoopt",
+            "my-project",
+            "README.md",
+            "pyproject.toml",
+            "docs",
+            "templates"
+          ]
+        }
+      }
+    }
   },
   "tool_registry": {
     "diagnose_project": {
@@ -17,25 +91,28 @@
       "produces_artifacts": [
         "artifacts/analysis/diagnosis.json"
       ],
-      "budget_cost": 5
+      "budget_cost": 5,
+      "workload_profile": "data_ops"
     },
     "run_candidate": {
       "adapter": "compute",
       "description": "Launch the next training candidate on the approved backend.",
-      "command": "python3 scripts/train.py --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/train.py --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --ssh-target {ssh_target} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/latest_train.json"
       ],
-      "budget_cost": 100
+      "budget_cost": 100,
+      "workload_profile": "gpu_train"
     },
     "evaluate_candidate": {
       "adapter": "evaluation",
       "description": "Evaluate the latest candidate on the frozen benchmark.",
-      "command": "python3 scripts/evaluate.py --project-root {project_root} --result-json {result_json}",
+      "command": "python3 scripts/evaluate.py --project-root {project_root} --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/latest_eval.json"
       ],
-      "budget_cost": 10
+      "budget_cost": 10,
+      "workload_profile": "evaluation"
     }
   },
   "decision_rules": [

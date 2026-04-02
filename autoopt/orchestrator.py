@@ -29,7 +29,7 @@ class Orchestrator:
         self.walkthrough = walkthrough
         self.worker = worker
         self.store = store
-        self.adapters = AdapterRegistry()
+        self.adapters = AdapterRegistry(spec)
 
     def load_or_create_state(self, job_id: str) -> JobState:
         existing = self.store.load(job_id)
@@ -136,6 +136,17 @@ class Orchestrator:
         if outcome.notes:
             state.notes.extend(outcome.notes)
 
+        if outcome.execution_host:
+            state.last_execution_target = outcome.execution_host
+            state.execution_history.append(
+                {
+                    "tool": tool.name,
+                    "host": outcome.execution_host,
+                    "mode": outcome.execution_mode,
+                    "timestamp": state.updated_at,
+                }
+            )
+
         if outcome.metrics:
             state.latest_metrics = outcome.metrics
             state.metrics_history.append(
@@ -156,6 +167,8 @@ class Orchestrator:
             "timestamp": state.updated_at,
             "artifacts": outcome.artifacts,
             "metrics": outcome.metrics,
+            "execution_host": outcome.execution_host,
+            "execution_mode": outcome.execution_mode,
         }
         if outcome.success:
             state.completed_steps.append(step_payload)

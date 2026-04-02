@@ -146,6 +146,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["discover", "validate", "prepare"])
     parser.add_argument("--project-root", required=True)
+    parser.add_argument("--execution-host", default="local")
+    parser.add_argument("--execution-mode", default="local")
+    parser.add_argument("--execution-project-root", default="")
     parser.add_argument("--result-json", required=True)
     args = parser.parse_args()
 
@@ -158,6 +161,14 @@ def main() -> None:
         validate(project_root, result_json)
     else:
         prepare(project_root, result_json)
+
+    result_payload = json.loads(result_json.read_text(encoding="utf-8"))
+    result_payload["execution_host"] = args.execution_host
+    result_payload["execution_mode"] = args.execution_mode
+    result_payload.setdefault("notes", []).append(
+        f"Data step routed to {args.execution_host} ({args.execution_mode})."
+    )
+    write_json(result_json, result_payload)
 
 
 if __name__ == "__main__":
