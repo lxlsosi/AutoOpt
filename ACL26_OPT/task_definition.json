@@ -1,0 +1,213 @@
+{
+  "task_name": "arabic_dialect_region_classification",
+  "objective": "Given a short Arabic audio clip, predict its dialect region for ADI optimization.",
+  "input_unit": "short_audio_clip",
+  "output_unit": "dialect_region_label",
+  "label_space": [
+    "Levant",
+    "Mesopotamian",
+    "MSA",
+    "NorthAfrica",
+    "Egyptian",
+    "Gulf"
+  ],
+  "preferred_modeling_path": "ACL",
+  "training_protocol": {
+    "official_recipe": "acoustic_v1",
+    "pilot_recipe": "acoustic_pilot",
+    "smoke_recipe": "smoke",
+    "formal_dev_usage": "evaluation_only",
+    "augmentation_policy": {
+      "MGB2_parquet": {
+        "role": "msa_only_augmentation",
+        "repeat_factor": 64,
+        "justification": "ADI17 train currently covers the 5 non-MSA target regions but does not provide a dedicated MSA class, so MGB2_parquet is the only controlled MSA supervision source in the whitelist."
+      }
+    },
+    "large_dataset_staging": {
+      "preferred_method": "rclone_via_tos",
+      "source_host": "Physical13",
+      "target_hosts": [
+        "ECOschool",
+        "ECO01",
+        "ECO04"
+      ],
+      "tos_remote_name": "volctos",
+      "tos_bucket": "momo-test-a100-02",
+      "tos_prefix": "datasets/lv.xiaolei/ACL26_ADI/Data",
+      "target_data_root": "/data/lv.xiaolei/ACL26_ADI/Data",
+      "notes": "Large training data should be uploaded from machine-room hosts to TOS with rclone, then materialized under /data on ECO. Avoid rsync/scp for large transfers."
+    }
+  },
+  "modeling_protocol": {
+    "official_baseline_track": "acoustic_only_baseline_v1",
+    "tracks": {
+      "acoustic_only_baseline_v1": {
+        "status": "active",
+        "modality": "acoustic_only",
+        "architecture": "acoustic_only_hicodi",
+        "requires_text": false,
+        "transcript_policy": "disabled",
+        "acoustic_encoder": "microsoft/wavlm-base-plus",
+        "semantic_encoder": null,
+        "use_msa_filter": true,
+        "classifier_hidden_dim": 512,
+        "projection_dim": 128,
+        "notes": "Official baseline track until transcript quality, coverage, and leakage controls are frozen."
+      },
+      "dual_stream_controlled_transcript_v1": {
+        "status": "reserved",
+        "modality": "dual_stream",
+        "architecture": "hicodi_dual",
+        "requires_text": true,
+        "transcript_policy": "controlled_only",
+        "transcript_sources_allowed": [
+          "human_verified_transcript",
+          "frozen_external_asr_v1"
+        ],
+        "acoustic_encoder": "microsoft/wavlm-base-plus",
+        "semantic_encoder": "aubmindlab/bert-base-arabertv02",
+        "use_msa_filter": true,
+        "activation_condition": "Enable only after train/dev transcript coverage and anti-leakage policy are frozen."
+      }
+    }
+  },
+  "evaluation_protocol": {
+    "readiness_eval_suite": "smoke",
+    "final_gold_eval_suite": "local_gold",
+    "final_gold_dataset": "Local",
+    "forbidden_training_datasets": [
+      "Local",
+      "ADI5_wav_raw_pool"
+    ]
+  },
+  "control_path": "/data/lv.xiaolei/AutoOpt/ACL26_OPT",
+  "dataset_policy": {
+    "whitelist": [
+      {
+        "name": "Local",
+        "role": "final_gold_evaluation",
+        "label_type": "standardized_region_jsonl",
+        "path": "Local/processed",
+        "notes": "Final gold-eval dataset curated locally. Processed JSONL files already carry normalized region_label fields, mirrored audio is available on Physical13, and this dataset must never enter training."
+      },
+      {
+        "name": "ADI17",
+        "role": "primary_supervised_train",
+        "label_type": "country_code",
+        "path": "ADI17/data",
+        "notes": "Primary supervised ADI source with explicit dialect labels that can be mapped to 6 regions."
+      },
+      {
+        "name": "MGB2_parquet",
+        "role": "msa_augmentation",
+        "label_type": "dialect",
+        "path": "MGB2_parquet",
+        "notes": "Current local parquet exposes only the MSA label in the train split, so it is treated as an MSA-only augmentation source rather than a second full multi-class supervision set."
+      },
+      {
+        "name": "NADI2025_subtask1_SLID",
+        "role": "adaptation_and_validation",
+        "label_type": "country_name",
+        "path": "NADI2025_subtask1_SLID/data",
+        "notes": "Spoken dialect ID adaptation split suitable for fine-tuning and validation."
+      },
+      {
+        "name": "MADIS5-spoken-arabic-dialects",
+        "role": "external_robustness_eval",
+        "label_type": "english_region_name",
+        "path": "MADIS5-spoken-arabic-dialects/data",
+        "notes": "Cross-domain evaluation set with 5 macro dialect classes aligned to the target task except for Mesopotamian."
+      },
+      {
+        "name": "Casablanca",
+        "role": "external_country_eval",
+        "label_type": "country_name",
+        "path": "Casablanca",
+        "notes": "Country-specific evaluation-only resource cached via Hugging Face datasets."
+      }
+    ],
+    "graylist": [
+      {
+        "name": "MGB3",
+        "label_type": "text_only_in_local_parquet",
+        "path": "MGB3/data",
+        "reason": "Current local parquet does not expose an explicit dialect label, so using it as Egyptian supervision would be an assumption that must be verified."
+      },
+      {
+        "name": "MGB5",
+        "label_type": "text_only_in_local_parquet",
+        "path": "MGB5/data",
+        "reason": "Current local parquet does not expose an explicit dialect label, so using it as North Africa supervision would be an assumption that must be verified."
+      }
+    ],
+    "blocked": [
+      {
+        "name": "MGB2",
+        "path": "MGB2",
+        "reason": "Raw ASR tar archives are not the preferred input to the ADI control loop when a labeled parquet conversion already exists."
+      },
+      {
+        "name": "QASR",
+        "path": "QASR",
+        "reason": "This resource is not currently structured as a dialect-region classification dataset."
+      },
+      {
+        "name": "ADI5_wav_raw_pool",
+        "path": "Local/raw + upstream ADI5_wav",
+        "reason": "The current Local gold sets include subsets sourced from ADI5_wav train/validation, so the upstream ADI5_wav pool must stay blocked from training until exact overlap removal is implemented."
+      }
+    ]
+  },
+  "region_mapping": {
+    "country_code_to_region": {
+      "ALG": "NorthAfrica",
+      "EGY": "Egyptian",
+      "IRA": "Mesopotamian",
+      "JOR": "Levant",
+      "KSA": "Gulf",
+      "KUW": "Gulf",
+      "LEB": "Levant",
+      "LIB": "NorthAfrica",
+      "MOR": "NorthAfrica",
+      "MAU": "NorthAfrica",
+      "OMA": "Gulf",
+      "PAL": "Levant",
+      "QAT": "Gulf",
+      "SUD": "Egyptian",
+      "SYR": "Levant",
+      "UAE": "Gulf",
+      "YEM": "Gulf",
+      "MSA": "MSA"
+    },
+    "country_name_to_region": {
+      "Algeria": "NorthAfrica",
+      "Egypt": "Egyptian",
+      "Iraq": "Mesopotamian",
+      "Jordan": "Levant",
+      "Kuwait": "Gulf",
+      "Lebanon": "Levant",
+      "Libya": "NorthAfrica",
+      "Mauritania": "NorthAfrica",
+      "Morocco": "NorthAfrica",
+      "Oman": "Gulf",
+      "Palestine": "Levant",
+      "Qatar": "Gulf",
+      "Saudi_Arabia": "Gulf",
+      "Saudi Arabia": "Gulf",
+      "Sudan": "Egyptian",
+      "Syria": "Levant",
+      "Tunisia": "NorthAfrica",
+      "UAE": "Gulf",
+      "United Arab Emirates": "Gulf",
+      "Yemen": "Gulf"
+    },
+    "english_region_name_to_region": {
+      "Egyptian Arabic": "Egyptian",
+      "Gulf Arabic": "Gulf",
+      "Levantine Arabic": "Levant",
+      "Maghrebi Arabic": "NorthAfrica",
+      "Modern Standard Arabic": "MSA"
+    }
+  }
+}

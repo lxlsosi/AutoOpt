@@ -1,0 +1,11 @@
+name: AutoOpt
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - ca-certificates
+  - openssl
+  - setuptools
+  - wheel

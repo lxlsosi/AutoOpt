@@ -51,6 +51,8 @@ class Orchestrator:
                 break
             state = self.run_turn(state)
             self.store.save(state)
+            if state.pending_jobs:
+                break
 
         return state
 
@@ -91,7 +93,6 @@ class Orchestrator:
                 state.record_checkpoint("approval_required")
                 return state
 
-            state.attempts_by_tool[tool_name] = int(state.attempts_by_tool.get(tool_name, 0)) + 1
             result_json_path = result_dir / f"{state.job_id}-{state.attempts}-{tool_name}.json"
 
             outcome = self.adapters.run_tool(
@@ -101,8 +102,14 @@ class Orchestrator:
                 state_path=state_path,
                 result_json_path=str(result_json_path),
             )
+            if outcome.count_attempt:
+                state.attempts_by_tool[tool_name] = int(state.attempts_by_tool.get(tool_name, 0)) + 1
             self._merge_outcome(state, outcome, tool)
             state.record_checkpoint(f"tool:{tool_name}")
+
+            if outcome.deferred:
+                state.phase = decision.phase
+                return state
 
             if not outcome.success:
                 state.phase = Phase.REFLECT.value if decision.phase != Phase.REFLECT.value else Phase.FAILED.value
@@ -147,6 +154,11 @@ class Orchestrator:
                 }
             )
 
+        if outcome.pending_job is not None:
+            state.pending_jobs[tool.name] = outcome.pending_job
+        if outcome.clear_pending_job:
+            state.pending_jobs.pop(tool.name, None)
+
         if outcome.metrics:
             state.latest_metrics = outcome.metrics
             state.metrics_history.append(
@@ -170,6 +182,9 @@ class Orchestrator:
             "execution_host": outcome.execution_host,
             "execution_mode": outcome.execution_mode,
         }
+        if outcome.deferred:
+            state.notes.append(outcome.summary)
+            return
         if outcome.success:
             state.completed_steps.append(step_payload)
         else:

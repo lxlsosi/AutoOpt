@@ -53,7 +53,15 @@ autoopt remote bootstrap --project Arab/project.json --host ECO04
 autoopt remote bootstrap --project Arab/project.json --host ECOschool
 ```
 
-这会把当前激活的 conda 环境导出成锁定文件，然后同步代码/数据到 `/data/AutoOpt`，并在目标机器上创建或更新 `AutoOPT` conda 环境。
+这会按 `runtime.source_conda_env=AutoOPT` 导出一个可迁移的 conda 规范，然后同步代码/数据到 `/data/AutoOpt`，并在目标机器上创建或更新 `AutoOPT` conda 环境。
+
+现在的训练链路也已经升级成后台 job 模式：
+
+- 第一次 `run` 会提交远端训练
+- 训练进程会挂在远端 `tmux` session 中
+- job 运行中时，state 里会出现 `pending_jobs`
+- 后续 `run` 会自动轮询远端状态
+- 完成后会把 logs、checkpoint、metrics 拉回本地
 
 ## 你后面要替换的点
 

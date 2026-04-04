@@ -44,6 +44,7 @@ pip install -e .
 autoopt run --project Arab/project.json --job-id arab-demo --max-turns 12
 autoopt inspect --project Arab/project.json --job-id arab-demo
 autoopt remote bootstrap --project Arab/project.json --host ECO01
+autoopt project init-linked --name "My Project" --target-dir ./MyProject --external-project /path/to/external/repo
 ```
 
 上面的 `Arab/` 是一个可本地跑通的 mock 项目。它会生成以下几类 artifact：
@@ -107,9 +108,41 @@ autoopt remote bootstrap --project Arab/project.json --host ECOschool
 
 这会做三件事：
 
-- 导出当前激活的 conda 环境
+- 按 `runtime.source_conda_env` 导出一个更适合跨 GPU 机器复用的 conda 规范
 - 同步代码和项目数据到远端 workspace
 - 在远端创建或更新同名 conda env
+
+对于 `compute` 工具，当前框架已经不是“SSH 上去前台直接跑”，而是：
+
+- 先提交远端后台 job
+- 在远端 `tmux` session 里承载训练进程
+- 在 state 里记录 `pending_jobs`
+- 后续 `autoopt run` 自动 poll
+- 自动同步 `stdout.log`、`stderr.log`、launcher log、checkpoint 和 result json
+
+## 适配别的项目
+
+可以。比较推荐的方式不是直接把外部工程塞进 `Arab/`，而是在当前 workspace 下新建一个和 `Arab/` 同级的 AutoOpt 项目目录，再把外部工程软链接进去。
+
+现在已经有一个初始化命令：
+
+```bash
+autoopt project init-linked \
+  --name "New Algo Project" \
+  --target-dir ./NewAlgoProject \
+  --external-project /absolute/path/to/real/project
+```
+
+它会：
+
+- 新建一个 AutoOpt 项目目录
+- 在里面创建 `source_project -> /absolute/path/to/real/project` 软链接
+- 生成 `project.json`、`contract.json`、`walkthrough.md`
+- 生成一个最小的 `scripts/diagnose.py`
+
+然后你就可以在这个新目录里继续让 Codex 做“项目适配”，把 scaffold 替换成真实的训练/评测逻辑。
+
+为了支持这个模式，远端同步现在会对配置中的软链接路径自动 `follow symlink`，也就是把真实工程内容同步到 `ECO` 机器，而不是把一个失效的软链接原样复制过去。
 
 ## 你接真实项目时的建议
 

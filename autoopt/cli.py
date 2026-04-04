@@ -7,6 +7,7 @@ from pathlib import Path
 from autoopt.orchestrator import Orchestrator
 from autoopt.project_loader import load_project
 from autoopt.remote import SSHRemoteManager
+from autoopt.scaffold import init_linked_project
 from autoopt.state_store import FileStateStore
 from autoopt.workers import OpenAIResponsesWorker, RuleBasedWorker
 
@@ -75,6 +76,28 @@ def remote_bootstrap_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def project_init_linked_command(args: argparse.Namespace) -> int:
+    project_dir = init_linked_project(
+        target_dir=args.target_dir,
+        project_name=args.name,
+        external_project_path=args.external_project,
+        linked_name=args.linked_name,
+    )
+    print(
+        json.dumps(
+            {
+                "project_dir": str(project_dir),
+                "project_json": str(project_dir / "project.json"),
+                "linked_name": args.linked_name,
+                "external_project": str(Path(args.external_project).resolve()),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AutoOpt autonomous algorithm engineer")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
@@ -99,6 +122,16 @@ def main() -> None:
     remote_bootstrap_parser.add_argument("--project", required=True, help="Path to project.json")
     remote_bootstrap_parser.add_argument("--host", required=True, help="Execution host name from execution_topology.hosts")
     remote_bootstrap_parser.set_defaults(func=remote_bootstrap_command)
+
+    project_parser = subparsers.add_parser("project", help="Scaffold or inspect project adapters")
+    project_subparsers = project_parser.add_subparsers(dest="project_subcommand", required=True)
+
+    project_init_linked_parser = project_subparsers.add_parser("init-linked", help="Create a new AutoOpt scaffold that links an external project")
+    project_init_linked_parser.add_argument("--name", required=True, help="Display name for the new AutoOpt project")
+    project_init_linked_parser.add_argument("--target-dir", required=True, help="Directory to create for the new AutoOpt project")
+    project_init_linked_parser.add_argument("--external-project", required=True, help="Path to the existing external project to link")
+    project_init_linked_parser.add_argument("--linked-name", default="source_project", help="Symlink name created inside the new project")
+    project_init_linked_parser.set_defaults(func=project_init_linked_command)
 
     args = parser.parse_args()
     raise SystemExit(args.func(args))

@@ -1,0 +1,86 @@
+{
+  "project_id": "acl26-adi-opt",
+  "objective": "Adapt ACL26_ADI into an AutoOpt-managed Arabic Dialect Identification project with a clean ADI-only optimization loop.",
+  "goal": "Freeze the first serious acoustic-only ADI baseline on ECOschool, evaluate it on a frozen formal dev suite, and treat the Local gold evaluation set as the final success gate.",
+  "success_metrics": [
+    {
+      "name": "adaptation_readiness",
+      "target": 1.0,
+      "mode": "max",
+      "description": "Whether ACL26_ADI has been adapted into a runnable AutoOpt project."
+    },
+    {
+      "name": "formal_dev_accuracy",
+      "target": 0.0,
+      "mode": "max",
+      "description": "Accuracy on the frozen formal dev suite for the first serious ECO acoustic-only baseline."
+    },
+    {
+      "name": "formal_dev_macro_f1",
+      "target": 0.0,
+      "mode": "max",
+      "description": "Macro F1 on the frozen formal dev suite."
+    },
+    {
+      "name": "local_gold_macro_f1",
+      "target": 0.0,
+      "mode": "max",
+      "description": "Macro F1 on the Local gold evaluation suite, which acts as the final gate."
+    }
+  ],
+  "frozen_eval_sets": [
+    "acl26_adi_formal_dev_v1",
+    "local_gold_v1"
+  ],
+  "constraints": [
+    "Focus on ADI only, not ASR correction.",
+    "Treat ACL/ as the source of truth unless a contradiction is resolved explicitly.",
+    "Do not mutate ACL26_ADI blindly; prefer wrappers and mirrored configs first.",
+    "Use conda env AutoOpt for project execution.",
+    "Checkpoint after every orchestration turn.",
+    "Do not stage large training data with rsync/scp; prefer rclone -> TOS -> /data for A100 hosts.",
+    "Local gold is evaluation-only and must never be used for training.",
+    "ADI5 upstream pools remain blocked for training until exact overlap removal is implemented."
+  ],
+  "data_policy": {
+    "allowed_source_classes": [
+      "local_source_project_data"
+    ],
+    "blocked_source_classes": [
+      "ad_hoc_external_scrape"
+    ],
+    "require_checksum": false,
+    "require_split_leakage_review": true
+  },
+  "compute_policy": {
+    "allowed_backends": [
+      "local",
+      "tmux-ssh"
+    ],
+    "allowed_hosts": [
+      "Physical13",
+      "ECO01",
+      "ECO04",
+      "ECOschool"
+    ],
+    "max_gpu_hours": 200,
+    "max_total_budget": 0
+  },
+  "human_gates": [
+    {
+      "name": "source-truth-conflict",
+      "condition": "root_readme_conflicts_with_acl_pipeline",
+      "action": "handoff"
+    },
+    {
+      "name": "evaluation-not-frozen",
+      "condition": "no_stable_eval_protocol",
+      "action": "handoff"
+    },
+    {
+      "name": "eco-pilot-not-ready",
+      "condition": "eco_training_host_missing_conda_gpu_tmux_required_data_or_tos_access",
+      "action": "handoff"
+    }
+  ]
+}

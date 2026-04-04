@@ -8,7 +8,8 @@
     "artifacts_dir": "artifacts",
     "default_worker": "rule-based",
     "max_turns_per_run": 8,
-    "source_conda_env": "AutoOPT"
+    "source_conda_env": "AutoOPT",
+    "remote_env_export_strategy": "from-history"
   },
   "execution_topology": {
     "controller_host": "controller",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,6 +25,12 @@ def load_manifest(project_root: Path) -> dict:
     return json.loads(manifest_path.read_text(encoding="utf-8"))
 
 
+def write_checkpoint(project_root: Path, recipe: str, content: dict) -> str:
+    checkpoint_path = project_root / "artifacts" / "checkpoints" / recipe / "last.ckpt.json"
+    write_json(checkpoint_path, content)
+    return str(checkpoint_path.relative_to(project_root))
+
+
 def baseline(
     project_root: Path,
     result_json: Path,
@@ -32,11 +39,24 @@ def baseline(
     execution_project_root: str,
 ) -> None:
     manifest = load_manifest(project_root)
+    print(f"[train] start baseline on {execution_host} ({execution_mode})", flush=True)
+    time.sleep(2)
     train_metrics = {
         "macro_f1": 0.74,
         "rare_dialect_recall": 0.59,
         "overall_accuracy": 0.79
     }
+    checkpoint_relative = write_checkpoint(
+        project_root,
+        "baseline",
+        {
+            "saved_at": utc_now(),
+            "recipe": "baseline",
+            "dataset_version": manifest["dataset_version"],
+            "execution_host": execution_host,
+            "step": 1200,
+        },
+    )
     train_payload = {
         "generated_at": utc_now(),
         "recipe": "baseline",
@@ -51,6 +71,7 @@ def baseline(
             "sampling": "natural",
             "augmentation": "light"
         },
+        "checkpoint_artifact": checkpoint_relative,
         "metrics": train_metrics
     }
     latest_path = project_root / "artifacts" / "metrics" / "latest_train.json"
@@ -64,7 +85,8 @@ def baseline(
             "summary": "Baseline training completed; minority dialect recall remains weak.",
             "artifacts": {
                 "latest_train": str(latest_path.relative_to(project_root)),
-                "train_baseline": str(named_path.relative_to(project_root))
+                "train_baseline": str(named_path.relative_to(project_root)),
+                "baseline_checkpoint": checkpoint_relative
             },
             "metrics": train_metrics,
             "dataset_version": manifest["dataset_version"],
@@ -83,6 +105,7 @@ def baseline(
             "budget_cost": 120
         },
     )
+    print(f"[train] baseline finished on {execution_host}", flush=True)
 
 
 def balanced(
@@ -93,11 +116,24 @@ def balanced(
     execution_project_root: str,
 ) -> None:
     manifest = load_manifest(project_root)
+    print(f"[train] start balanced recipe on {execution_host} ({execution_mode})", flush=True)
+    time.sleep(2)
     train_metrics = {
         "macro_f1": 0.83,
         "rare_dialect_recall": 0.72,
         "overall_accuracy": 0.85
     }
+    checkpoint_relative = write_checkpoint(
+        project_root,
+        "balanced_recipe",
+        {
+            "saved_at": utc_now(),
+            "recipe": "balanced_recipe",
+            "dataset_version": manifest["dataset_version"],
+            "execution_host": execution_host,
+            "step": 1800,
+        },
+    )
     train_payload = {
         "generated_at": utc_now(),
         "recipe": "balanced_recipe",
@@ -113,6 +149,7 @@ def balanced(
             "augmentation": "telephony_plus_noise",
             "loss": "focal"
         },
+        "checkpoint_artifact": checkpoint_relative,
         "metrics": train_metrics
     }
     latest_path = project_root / "artifacts" / "metrics" / "latest_train.json"
@@ -126,7 +163,8 @@ def balanced(
             "summary": "Improved training recipe completed with stronger rare-dialect recall.",
             "artifacts": {
                 "latest_train": str(latest_path.relative_to(project_root)),
-                "train_balanced_recipe": str(named_path.relative_to(project_root))
+                "train_balanced_recipe": str(named_path.relative_to(project_root)),
+                "balanced_checkpoint": checkpoint_relative
             },
             "metrics": train_metrics,
             "dataset_version": manifest["dataset_version"],
@@ -145,6 +183,7 @@ def balanced(
             "budget_cost": 180
         },
     )
+    print(f"[train] balanced recipe finished on {execution_host}", flush=True)
 
 
 def main() -> None:

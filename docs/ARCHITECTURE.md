@@ -94,6 +94,7 @@
 - `hypotheses_tried`
 - `blocked_reason`
 - `last_execution_target`
+- `pending_jobs`
 - `execution_history`
 - `phase_history`
 - `checkpoints`
@@ -123,6 +124,13 @@
 ```
 
 关键点不是让 orchestrator 直接长驻 GPU 机器，而是让 orchestrator 只负责决策，把目标机和选路理由写进状态，再由包装脚本或平台 adapter 提交实际任务。
+
+对于长训练，推荐模式是：
+
+1. 当前 turn 只提交后台 job
+2. 在 state 里记录 `pending_jobs`
+3. 下一个 turn 只做 poll
+4. 任务完成后回收 logs / checkpoint / metrics，再进入 evaluate
 
 ## 5. 推荐接入方式
 
@@ -172,6 +180,13 @@
 - `train.py` 之类脚本读取 `AUTOOPT_EXECUTION_HOST`
 - 由脚本决定 `ssh`、`sbatch`、`ray job submit` 或内部调度接口
 - 结果摘要和 job handle 回写本地 `result_json`
+
+如果真实工程已经存在，推荐把 AutoOpt 当成控制平面单独放一层：
+
+- `Arab/` 这种目录是 AutoOpt 项目层
+- 真正的训练工程通过软链接接入，例如 `source_project -> /real/path/project`
+- 让 Codex 在 AutoOpt 项目层改 wrappers / adapters / decision rules
+- 尽量少直接改真实训练工程，除非已经明确好变更范围
 
 ## 8. 人工 Gate 建议
 

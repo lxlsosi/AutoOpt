@@ -237,6 +237,10 @@ class ToolExecutionOutcome:
     budget_cost: float = 0.0
     execution_host: str | None = None
     execution_mode: str | None = None
+    deferred: bool = False
+    count_attempt: bool = True
+    pending_job: dict[str, Any] | None = None
+    clear_pending_job: bool = False
     exit_code: int = 0
     stdout: str = ""
     stderr: str = ""
@@ -267,6 +271,7 @@ class JobState:
     approval_required: bool = False
     blocked_reason: str | None = None
     last_execution_target: str | None = None
+    pending_jobs: dict[str, dict[str, Any]] = field(default_factory=dict)
     execution_history: list[dict[str, Any]] = field(default_factory=list)
     phase_history: list[dict[str, Any]] = field(default_factory=list)
     checkpoints: list[dict[str, Any]] = field(default_factory=list)
