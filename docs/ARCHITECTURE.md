@@ -1,45 +1,48 @@
 # AutoOpt Architecture
 
-## 1. 设计原则
+## 1. Design principles
 
-- 任务是状态机，不是一次超长对话。
-- 记忆以外部状态和 artifact 为准，不以 thread 上下文为准。
-- 长时间动作交给外部 job 系统，agent 只负责编排。
-- 每次 turn 都要留下 checkpoint、摘要、失败路径和产物引用。
-- 先冻结 contract，再让 agent 优化，不让 agent 重写目标。
+AutoOpt is designed for safe, reproducible AI-agent-assisted algorithm engineering.
 
-## 2. 项目文件
+- A task is a state machine, not a single long conversation.
+- Durable memory lives in external state and artifacts, not only in model context.
+- Long-running data, training, and evaluation work is delegated to external jobs.
+- Every turn should leave checkpoints, summaries, failure paths, and artifact references.
+- Project contracts are frozen before optimization; agents should not silently rewrite goals.
+- High-risk actions should stop at explicit human gates.
 
-每个项目最少要有三个文件：
+## 2. Project files
+
+Each AutoOpt project should contain at least three files:
 
 1. `walkthrough.md`
 2. `contract.json`
 3. `project.json`
 
-如果项目要跨机器执行，建议把 `execution_topology` 也当成稳定配置的一部分，直接放进 `project.json`。
+For distributed or remote execution, `execution_topology` should also be part of the stable project configuration.
 
 ### `contract.json`
 
-定义稳定约束：
+The contract defines stable constraints:
 
-- objective
-- success_metrics
-- frozen_eval_sets
-- constraints
-- data_policy
-- compute_policy
-- human_gates
+- `objective`
+- `success_metrics`
+- `frozen_eval_sets`
+- `constraints`
+- `data_policy`
+- `compute_policy`
+- `human_gates`
 
 ### `project.json`
 
-定义执行层：
+The project configuration defines the execution layer:
 
 - `tool_registry`
 - `decision_rules`
 - `runtime`
 - `execution_topology`
 
-工具注册表示例：
+Example tool registry entry:
 
 ```json
 {
@@ -53,7 +56,7 @@
 }
 ```
 
-决策规则示例：
+Example decision rule:
 
 ```json
 {
@@ -68,9 +71,9 @@
 }
 ```
 
-## 3. 状态字段
+## 3. Persistent state
 
-框架默认持久化这些字段：
+AutoOpt persists job state so that agent work can resume across turns and failures. Typical fields include:
 
 - `job_id`
 - `thread_id`
@@ -88,7 +91,6 @@
 - `latest_metrics`
 - `best_metric`
 - `metrics_history`
-- `gpu_job_id`
 - `budget_spent`
 - `approval_required`
 - `hypotheses_tried`
@@ -99,100 +101,126 @@
 - `phase_history`
 - `checkpoints`
 
-## 4. 执行拓扑
+## 4. Execution topology
 
-推荐把机器分成两类：
+AutoOpt separates control from execution.
 
-- 控制机：跑 orchestrator、worker、state store、summary
-- 执行机：跑数据下载、训练、验证，或者承接提交后的异步 job
+- **Controller**: runs the orchestrator, worker, state store, and summaries.
+- **Execution workers**: run data processing, training, evaluation, or submitted jobs.
 
-典型拓扑：
+Example topology:
 
 ```json
 {
   "execution_topology": {
-    "controller_host": "Physical13",
-    "default_local_host": "Physical13",
-    "default_compute_hosts": ["ECO01", "ECO04", "ECOschool"],
+    "controller_host": "controller-01",
+    "default_local_host": "controller-01",
+    "default_compute_hosts": ["gpu-worker-01", "gpu-worker-02"],
     "routing_profiles": {
-      "data_ops": ["Physical13"],
-      "evaluation": ["Physical13"],
-      "gpu_train": ["ECO01", "ECO04", "ECOschool"]
+      "data_ops": ["controller-01"],
+      "evaluation": ["controller-01"],
+      "gpu_train": ["gpu-worker-01", "gpu-worker-02"]
     }
   }
 }
 ```
 
-关键点不是让 orchestrator 直接长驻 GPU 机器，而是让 orchestrator 只负责决策，把目标机和选路理由写进状态，再由包装脚本或平台 adapter 提交实际任务。
+The orchestrator should not need to live on a GPU worker. It records the target host and routing reason in state, while wrappers or adapters submit the actual work.
 
-对于长训练，推荐模式是：
+For long-running training:
 
-1. 当前 turn 只提交后台 job
-2. 在 state 里记录 `pending_jobs`
-3. 下一个 turn 只做 poll
-4. 任务完成后回收 logs / checkpoint / metrics，再进入 evaluate
+1. The current turn submits a background job.
+2. The returned job handle is recorded in `pending_jobs`.
+3. A later turn polls job status.
+4. When the job completes, AutoOpt collects logs, checkpoints, and metrics.
+5. The workflow proceeds to evaluation and reflection.
 
-## 5. 推荐接入方式
+## 5. Adapter surfaces
 
-### 数据侧
+### Data adapters
 
-- 搜索/枚举数据源
-- 下载和校验
-- 生成清洗 manifest
-- 记录 license、checksum、覆盖范围、泄漏风险
+- enumerate candidate sources
+- download and validate datasets
+- generate manifests
+- record license, checksum, coverage, and leakage risk
 
-### 算力侧
+### Compute adapters
 
-- 提交训练任务
-- 获取 job id
-- 轮询状态
-- 收集 metrics / checkpoints / model path
+- submit training or evaluation jobs
+- return job identifiers
+- poll job status
+- collect metrics, logs, checkpoints, and model paths
 
-### 评测侧
+### Evaluation adapters
 
-- 固定 benchmark
-- confusion matrix
-- per-class recall
-- 不合格原因定位
+- run frozen benchmarks
+- generate confusion matrices
+- report per-class metrics
+- produce failure summaries
+- detect regressions
 
-## 6. 为什么先做 rule-based
+## 6. Why start with a rule-based worker
 
-`rule-based worker` 的价值不是替代 LLM，而是先把下面这些稳定件搭好：
+The rule-based worker exists to validate the stable parts before introducing model-driven behavior:
 
-- 状态机边界
-- checkpoint 粒度
-- artifact 协议
-- 工具调用协议
-- 人工接管条件
+- state-machine boundaries
+- checkpoint granularity
+- artifact protocol
+- tool-call protocol
+- approval gates
+- failure recovery
 
-这些稳定后，再把 worker 换成 Codex / OpenAI Responses，系统才不会“一换脑子就散架”。
+After these boundaries are stable, a Codex-style or OpenAI Responses worker can be attached through the same tool and state interfaces.
 
-## 7. 真接生产时该替换什么
+## 7. Production hardening
 
-- 把 `ShellAdapter` 替换成内部平台 adapter
-- 把 mock `scripts/*.py` 替换成真实提交/轮询脚本
-- 把 `OpenAIResponsesWorker` 的 prompt 变成你们自己的 agent contract
-- 把 `.autoopt/jobs` 换成 DB / Redis / Postgres / Temporal state
+A production deployment should replace examples with project-specific adapters:
 
-如果你们是 `Physical13 -> ECO01/ECO04/ECOschool` 这种架构，比较自然的替换方式是：
+- replace `ShellAdapter` with a platform adapter
+- replace mock scripts with real submit/poll/collect commands
+- define a stable worker prompt and output schema
+- replace `.autoopt/jobs` with a durable store when necessary
+- validate contracts and projects with JSON Schema
+- audit changes to evaluation and release logic
 
-- 保留 orchestrator 在 `Physical13`
-- `train.py` 之类脚本读取 `AUTOOPT_EXECUTION_HOST`
-- 由脚本决定 `ssh`、`sbatch`、`ray job submit` 或内部调度接口
-- 结果摘要和 job handle 回写本地 `result_json`
+If an existing project already exists, use AutoOpt as a control plane:
 
-如果真实工程已经存在，推荐把 AutoOpt 当成控制平面单独放一层：
+- keep the AutoOpt project layer separate
+- link the real training or algorithm project as `source_project`
+- let agents modify wrappers, adapters, and decision rules first
+- modify core training code only after the change scope is explicit
 
-- `Arab/` 这种目录是 AutoOpt 项目层
-- 真正的训练工程通过软链接接入，例如 `source_project -> /real/path/project`
-- 让 Codex 在 AutoOpt 项目层改 wrappers / adapters / decision rules
-- 尽量少直接改真实训练工程，除非已经明确好变更范围
+## 8. Human gate recommendations
 
-## 8. 人工 Gate 建议
+Require approval for:
 
-- 外部数据源 license 不确定
-- 要花大额 GPU 预算
-- 指标异常波动
-- 怀疑数据泄漏
-- 连续同类失败
-- 想改测试集、标签口径或上线阈值
+- uncertain external dataset licenses
+- large compute budget usage
+- abnormal metric shifts
+- suspected data leakage
+- repeated failures of the same approach
+- changes to test sets, labels, thresholds, or release-critical behavior
+- deletion of artifacts, logs, or checkpoints
+- disabling validation or safety checks
+
+## 9. Codex integration boundary
+
+A Codex-style worker should receive only the information needed for the next bounded step:
+
+- current state summary
+- relevant contract fields
+- relevant walkthrough sections
+- tool registry subset
+- artifact references
+- prior failure summaries
+
+It should return structured decisions:
+
+- proposed action
+- tools to invoke
+- expected artifacts
+- risk level
+- whether human approval is required
+- concise summary for the next turn
+
+The repository should treat Codex as a maintainer assistant that proposes and executes bounded changes under the project contract, not as an unrestricted autonomous maintainer.
