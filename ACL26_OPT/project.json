@@ -17,38 +17,38 @@
   },
   "data_plane": {
     "preferred_large_transfer": "rclone_via_tos",
-    "tos_remote_name": "volctos",
-    "tos_bucket": "momo-test-a100-02",
-    "tos_prefix": "datasets/lv.xiaolei/ACL26_ADI/Data",
-    "eco_target_data_root": "/data/lv.xiaolei/ACL26_ADI/Data",
-    "notes": "For large dataset movement toward A100 hosts, prefer rclone -> TOS -> /data rather than rsync/scp."
+    "tos_remote_name": "objectstore",
+    "tos_bucket": "example-autoopt-bucket",
+    "tos_prefix": "datasets/autoopt-workspace/ACL26_ADI/Data",
+    "eco_target_data_root": "/data/autoopt-workspace/ACL26_ADI/Data",
+    "notes": "For large dataset movement toward A100 hosts, prefer rclone -> object storage -> /data rather than rsync/scp."
   },
   "execution_topology": {
-    "controller_host": "Physical13",
-    "default_local_host": "Physical13",
+    "controller_host": "local-controller",
+    "default_local_host": "local-controller",
     "default_compute_hosts": [
-      "ECOschool",
-      "ECO01",
-      "ECO04"
+      "gpu-worker-01",
+      "gpu-worker-02",
+      "gpu-worker-03"
     ],
     "routing_profiles": {
       "repo_diagnose": [
-        "Physical13"
+        "local-controller"
       ],
       "small_gpu_validate": [
-        "Physical13"
+        "local-controller"
       ],
       "evaluation": [
-        "Physical13"
+        "local-controller"
       ],
       "gpu_train": [
-        "ECOschool",
-        "ECO01",
-        "ECO04"
+        "gpu-worker-01",
+        "gpu-worker-02",
+        "gpu-worker-03"
       ]
     },
     "hosts": {
-      "Physical13": {
+      "local-controller": {
         "mode": "local",
         "roles": [
           "controller",
@@ -57,28 +57,28 @@
           "evaluation"
         ],
         "local_aliases": [
-          "Physical13",
-          "physical13"
+          "local-controller",
+          "local-controller"
         ],
         "codex_ready": true,
         "small_gpu_ok": true
       },
-      "ECO01": {
+      "gpu-worker-02": {
         "mode": "dispatch",
         "roles": [
           "gpu_train"
         ],
-        "ssh_target": "ECO01",
-        "project_root": "/data/lv.xiaolei/AutoOpt/ACL26_OPT",
-        "workspace_root": "/data/lv.xiaolei/AutoOpt",
+        "ssh_target": "gpu-worker-02",
+        "project_root": "/data/autoopt-workspace/AutoOpt/ACL26_OPT",
+        "workspace_root": "/data/autoopt-workspace/AutoOpt",
         "conda_env_name": "AutoOpt",
         "gpu_type": "A100",
         "gpu_count": 8,
-        "shared_storage_root": "/data/lv.xiaolei",
+        "shared_storage_root": "/data/autoopt-workspace",
         "install_conda_if_missing": true,
         "conda_root": "/root/miniforge3",
         "post_create_commands": [
-          "bash /data/lv.xiaolei/AutoOpt/ACL26_OPT/scripts/bootstrap_autoopt_env.sh AutoOpt"
+          "bash /data/autoopt-workspace/AutoOpt/ACL26_OPT/scripts/bootstrap_autoopt_env.sh AutoOpt"
         ],
         "bootstrap": {
           "sync_paths": [
@@ -91,22 +91,22 @@
           ]
         }
       },
-      "ECO04": {
+      "gpu-worker-03": {
         "mode": "dispatch",
         "roles": [
           "gpu_train"
         ],
-        "ssh_target": "ECO04",
-        "project_root": "/data/lv.xiaolei/AutoOpt/ACL26_OPT",
-        "workspace_root": "/data/lv.xiaolei/AutoOpt",
+        "ssh_target": "gpu-worker-03",
+        "project_root": "/data/autoopt-workspace/AutoOpt/ACL26_OPT",
+        "workspace_root": "/data/autoopt-workspace/AutoOpt",
         "conda_env_name": "AutoOpt",
         "gpu_type": "A100",
         "gpu_count": 8,
-        "shared_storage_root": "/data/lv.xiaolei",
+        "shared_storage_root": "/data/autoopt-workspace",
         "install_conda_if_missing": true,
         "conda_root": "/root/miniforge3",
         "post_create_commands": [
-          "bash /data/lv.xiaolei/AutoOpt/ACL26_OPT/scripts/bootstrap_autoopt_env.sh AutoOpt"
+          "bash /data/autoopt-workspace/AutoOpt/ACL26_OPT/scripts/bootstrap_autoopt_env.sh AutoOpt"
         ],
         "bootstrap": {
           "sync_paths": [
@@ -119,22 +119,22 @@
           ]
         }
       },
-      "ECOschool": {
+      "gpu-worker-01": {
         "mode": "dispatch",
         "roles": [
           "gpu_train"
         ],
-        "ssh_target": "ECOschool",
-        "project_root": "/data/lv.xiaolei/AutoOpt/ACL26_OPT",
-        "workspace_root": "/data/lv.xiaolei/AutoOpt",
+        "ssh_target": "gpu-worker-01",
+        "project_root": "/data/autoopt-workspace/AutoOpt/ACL26_OPT",
+        "workspace_root": "/data/autoopt-workspace/AutoOpt",
         "conda_env_name": "AutoOpt",
         "gpu_type": "A100",
         "gpu_count": 8,
-        "shared_storage_root": "/data/lv.xiaolei",
+        "shared_storage_root": "/data/autoopt-workspace",
         "install_conda_if_missing": true,
         "conda_root": "/root/miniforge3",
         "post_create_commands": [
-          "bash /data/lv.xiaolei/AutoOpt/ACL26_OPT/scripts/bootstrap_autoopt_env.sh AutoOpt"
+          "bash /data/autoopt-workspace/AutoOpt/ACL26_OPT/scripts/bootstrap_autoopt_env.sh AutoOpt"
         ],
         "bootstrap": {
           "sync_paths": [
@@ -152,7 +152,7 @@
   "source_project": {
     "name": "ACL26_ADI",
     "linked_source_root": "../ACL26_ADI_source",
-    "original_source_root": "/data/lv.xiaolei/ACL26_ADI",
+    "original_source_root": "/data/autoopt-workspace/ACL26_ADI",
     "acl_root_relative": "ACL",
     "data_root_relative": "Data"
   },
@@ -160,7 +160,7 @@
     "prepare_source_link": {
       "adapter": "data",
       "description": "Create the local source symlink that points to ACL26_ADI and report shared-data staging status.",
-      "command": "python3 scripts/prepare_source_link.py --project-root {project_root} --original-source-root /data/lv.xiaolei/ACL26_ADI --link-name ACL26_ADI_source --shared-source-root /data/lv.xiaolei/ACL26_ADI --result-json {result_json}",
+      "command": "python3 scripts/prepare_source_link.py --project-root {project_root} --original-source-root /data/autoopt-workspace/ACL26_ADI --link-name ACL26_ADI_source --shared-source-root /data/autoopt-workspace/ACL26_ADI --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/runtime/source_link.json"
       ],
@@ -170,7 +170,7 @@
     "diagnose_acl26_adi": {
       "adapter": "data",
       "description": "Inspect ACL26_ADI and summarize the ADI-only adaptation requirements.",
-      "command": "python3 scripts/diagnose.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/lv.xiaolei/ACL26_ADI --acl-root /data/lv.xiaolei/ACL26_ADI/ACL --data-root /data/lv.xiaolei/ACL26_ADI/Data --result-json {result_json}",
+      "command": "python3 scripts/diagnose.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/autoopt-workspace/ACL26_ADI --acl-root /data/autoopt-workspace/ACL26_ADI/ACL --data-root /data/autoopt-workspace/ACL26_ADI/Data --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/analysis/acl26_adi_diagnosis.json"
       ],
@@ -180,7 +180,7 @@
     "audit_data_inventory": {
       "adapter": "data",
       "description": "Audit the Data directory against the 6-region task definition and classify each dataset as whitelist, graylist, or blocked.",
-      "command": "python3 scripts/audit_data_inventory.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --data-root /data/lv.xiaolei/ACL26_ADI/Data --result-json {result_json}",
+      "command": "python3 scripts/audit_data_inventory.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --data-root /data/autoopt-workspace/ACL26_ADI/Data --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/analysis/data_inventory_report.json"
       ],
@@ -190,7 +190,7 @@
     "verify_runtime": {
       "adapter": "data",
       "description": "Verify that conda AutoOpt contains the packages needed by the ADI wrappers.",
-      "command": "python3 scripts/verify_runtime.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/lv.xiaolei/ACL26_ADI --result-json {result_json}",
+      "command": "python3 scripts/verify_runtime.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/autoopt-workspace/ACL26_ADI --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/runtime/runtime_report.json"
       ],
@@ -199,22 +199,22 @@
     },
     "verify_ecoschool_formal_ready": {
       "adapter": "data",
-      "description": "Bootstrap ECOschool and verify that the formal acoustic-only recipe can see GPUs, tmux, full staged datasets, and TOS access.",
-      "command": "python3 scripts/verify_eco_ready.py --project-root {project_root} --source-root /data/lv.xiaolei/ACL26_ADI --data-root /data/lv.xiaolei/ACL26_ADI/Data --recipe acoustic_v1 --rclone-remote volctos --tos-bucket momo-test-a100-02 --require-tos-access --result-json {result_json}",
+      "description": "Bootstrap gpu-worker-01 and verify that the formal acoustic-only recipe can see GPUs, tmux, full staged datasets, and object storage access.",
+      "command": "python3 scripts/verify_eco_ready.py --project-root {project_root} --source-root /data/autoopt-workspace/ACL26_ADI --data-root /data/autoopt-workspace/ACL26_ADI/Data --recipe acoustic_v1 --rclone-remote objectstore --tos-bucket example-autoopt-bucket --require-tos-access --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/runtime/eco_ready_acoustic_v1.json"
       ],
       "budget_cost": 2,
       "workload_profile": "gpu_train",
       "candidate_hosts": [
-        "ECOschool"
+        "gpu-worker-01"
       ],
       "dispatch_strategy": "first"
     },
     "train_acl26_acoustic_v1": {
       "adapter": "compute",
-      "description": "Run the first serious acoustic-only baseline recipe on ECOschool using full ADI17 training data and MGB2 MSA augmentation.",
-      "command": "python3 scripts/train_acl26.py acoustic_v1 --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/lv.xiaolei/ACL26_ADI --acl-root /data/lv.xiaolei/ACL26_ADI/ACL --data-root /data/lv.xiaolei/ACL26_ADI/Data --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
+      "description": "Run the first serious acoustic-only baseline recipe on gpu-worker-01 using full ADI17 training data and MGB2 MSA augmentation.",
+      "command": "python3 scripts/train_acl26.py acoustic_v1 --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/autoopt-workspace/ACL26_ADI --acl-root /data/autoopt-workspace/ACL26_ADI/ACL --data-root /data/autoopt-workspace/ACL26_ADI/Data --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/latest_train.json",
         "artifacts/runtime/train_manifest_acoustic_v1.json"
@@ -222,14 +222,14 @@
       "budget_cost": 60,
       "workload_profile": "gpu_train",
       "candidate_hosts": [
-        "ECOschool"
+        "gpu-worker-01"
       ],
       "dispatch_strategy": "first"
     },
     "evaluate_acl26_formal_dev": {
       "adapter": "evaluation",
       "description": "Evaluate the current acoustic-only baseline on the frozen formal dev suite.",
-      "command": "python3 scripts/evaluate_acl26.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/lv.xiaolei/ACL26_ADI --acl-root /data/lv.xiaolei/ACL26_ADI/ACL --data-root /data/lv.xiaolei/ACL26_ADI/Data --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --eval-suite formal_dev --result-json {result_json}",
+      "command": "python3 scripts/evaluate_acl26.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/autoopt-workspace/ACL26_ADI --acl-root /data/autoopt-workspace/ACL26_ADI/ACL --data-root /data/autoopt-workspace/ACL26_ADI/Data --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --eval-suite formal_dev --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/latest_eval.json",
         "artifacts/metrics/eval_formal_dev_acoustic_v1.json",
@@ -241,8 +241,8 @@
     },
     "evaluate_acl26_local_gold": {
       "adapter": "evaluation",
-      "description": "Evaluate the current acoustic-only baseline on the Local gold evaluation suite once mirrored audio is ready on Physical13.",
-      "command": "python3 scripts/evaluate_acl26.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/lv.xiaolei/ACL26_ADI --acl-root /data/lv.xiaolei/ACL26_ADI/ACL --data-root /data/lv.xiaolei/ACL26_ADI/Data --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --eval-suite local_gold --result-json {result_json}",
+      "description": "Evaluate the current acoustic-only baseline on the Local gold evaluation suite once mirrored audio is ready on local-controller.",
+      "command": "python3 scripts/evaluate_acl26.py --project-root {project_root} --task-definition-path {project_root}/task_definition.json --source-root /data/autoopt-workspace/ACL26_ADI --acl-root /data/autoopt-workspace/ACL26_ADI/ACL --data-root /data/autoopt-workspace/ACL26_ADI/Data --execution-host {execution_host} --execution-mode {execution_mode} --execution-project-root {execution_project_root} --eval-suite local_gold --result-json {result_json}",
       "produces_artifacts": [
         "artifacts/metrics/eval_local_gold.json",
         "artifacts/metrics/latest_eval_local_gold.json",
@@ -345,7 +345,7 @@
       "tools": [
         "verify_ecoschool_formal_ready"
       ],
-      "summary": "Bootstrap ECOschool and verify that the formal training data, environment, and TOS access are ready.",
+      "summary": "Bootstrap gpu-worker-01 and verify that the formal training data, environment, and object storage access are ready.",
       "followup_phase": "execute"
     },
     {
@@ -362,7 +362,7 @@
       "tools": [
         "train_acl26_acoustic_v1"
       ],
-      "summary": "Submit the first serious acoustic-only baseline to ECOschool via tmux-backed remote execution.",
+      "summary": "Submit the first serious acoustic-only baseline to gpu-worker-01 via tmux-backed remote execution.",
       "followup_phase": "evaluate"
     },
     {

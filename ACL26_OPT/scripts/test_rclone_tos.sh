@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # test_rclone_tos.sh
-# 在 Physical13 上运行，验证 rclone → TOS 凭证是否可用
+# 在 local-controller 上运行，验证 rclone -> object storage 凭证是否可用
 # 用法:
 #   bash ACL26_OPT/scripts/test_rclone_tos.sh
 # ============================================================
@@ -9,14 +9,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CONF="$PROJECT_ROOT/config/rclone.volctos.conf"
+CONF="$PROJECT_ROOT/config/rclone.objectstore.conf"
 RCLONE_BIN="${RCLONE_BIN:-$(command -v rclone 2>/dev/null || echo "$HOME/bin/rclone")}"
-BUCKET="${TOS_BUCKET:-momo-test-a100-02}"
-PREFIX="${TOS_PREFIX:-datasets/lv.xiaolei/ACL26_ADI/Data}"
-REMOTE="volctos"
+BUCKET="${TOS_BUCKET:-example-autoopt-bucket}"
+PREFIX="${TOS_PREFIX:-datasets/autoopt-workspace/ACL26_ADI/Data}"
+REMOTE="objectstore"
 
 echo "=============================="
-echo "  rclone TOS 凭证调试脚本"
+echo "  rclone object storage credential debug"
 echo "=============================="
 echo "Config  : $CONF"
 echo "Binary  : $RCLONE_BIN"
@@ -46,13 +46,14 @@ echo "--- 测试 1: listremotes ---"
 echo ""
 
 # --- 4. DNS 解析 (endpoint) ---
-ENDPOINT="tos-s3-cn-beijing.volces.com"
-echo "--- 测试 2: DNS 解析 $ENDPOINT ---"
-if host "$ENDPOINT" &>/dev/null 2>&1; then
-  echo "[OK] DNS 正常: $(host $ENDPOINT 2>&1 | head -1)"
+ENDPOINT_HOST="${ENDPOINT_HOST:-s3.example.com}"
+ENDPOINT_URL="${ENDPOINT_URL:-https://s3.example.com}"
+echo "--- 测试 2: DNS 解析 $ENDPOINT_HOST ---"
+if host "$ENDPOINT_HOST" &>/dev/null 2>&1; then
+  echo "[OK] DNS 正常: $(host "$ENDPOINT_HOST" 2>&1 | head -1)"
 else
   echo "[WARN] host 命令不可用，尝试 curl 探测..."
-  curl -sv --max-time 5 "http://$ENDPOINT" 2>&1 | grep -E "Connected|Could not|Failed" | head -5 || true
+  curl -sv --max-time 5 "$ENDPOINT_URL" 2>&1 | grep -E "Connected|Could not|Failed" | head -5 || true
 fi
 echo ""
 

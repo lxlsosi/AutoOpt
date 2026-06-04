@@ -39,6 +39,7 @@ queued -> diagnose -> propose -> execute -> evaluate -> reflect -> handoff/done/
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
+python -m unittest discover -s tests
 
 autoopt run --project Arab/project.json --job-id arab-demo --max-turns 12
 autoopt inspect --project Arab/project.json --job-id arab-demo
@@ -54,6 +55,8 @@ The bundled `Arab/` directory is a small demonstration project. It is intended t
 - `artifacts/analysis/*.json`
 - `artifacts/metrics/*.json`
 - `.autoopt/jobs/*.json`
+
+The bundled examples use synthetic or placeholder infrastructure. Do not commit real credentials, private datasets, private hostnames, production buckets, or personal paths.
 
 ## Agent worker model
 
@@ -133,12 +136,26 @@ AutoOpt is designed around conservative agent automation:
 4. Treat the agent as a bounded proposer/executor, not the owner of the project goal.
 5. Keep reproducible artifacts outside the model thread.
 
+## Open-source readiness
+
+AutoOpt is structured for Codex-assisted maintenance work:
+
+- deterministic rule-based worker for local smoke tests
+- explicit OpenAI Responses worker boundary for model-driven decisions
+- committed examples that avoid private data and use placeholder infrastructure
+- CI smoke test for package import and end-to-end example execution
+- documented contribution, security, and privacy policies
+
+Good first maintainer tasks for Codex are schema validation, transition tests, execution adapters, PR-review checklists, and documentation examples.
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Codex for OSS preparation](docs/CODEX_FOR_OSS.md)
+- [Codex for OSS application draft](docs/CODEX_FOR_OSS_APPLICATION_DRAFT.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
+- [Privacy and data policy](PRIVACY.md)
 
 ## Roadmap
 

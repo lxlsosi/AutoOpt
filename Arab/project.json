@@ -12,32 +12,29 @@
     "remote_env_export_strategy": "from-history"
   },
   "execution_topology": {
-    "controller_host": "Physical13",
-    "default_local_host": "Physical13",
+    "controller_host": "local-controller",
+    "default_local_host": "local-controller",
     "default_compute_hosts": [
-      "ECO01",
-      "ECO04",
-      "ECOschool"
+      "local-controller"
     ],
     "routing_profiles": {
       "data_ops": [
-        "Physical13"
+        "local-controller"
       ],
       "evaluation": [
-        "Physical13"
+        "local-controller"
       ],
       "small_gpu_validate": [
-        "Physical13"
+        "local-controller"
       ],
       "gpu_train": [
-        "ECO01",
-        "ECO04",
-        "ECOschool"
+        "local-controller"
       ]
     },
     "hosts": {
-      "Physical13": {
+      "local-controller": {
         "mode": "local",
+        "ssh_target": "local",
         "roles": [
           "controller",
           "data",
@@ -45,18 +42,18 @@
           "small_gpu_validate"
         ],
         "local_aliases": [
-          "Physical13",
-          "physical13"
+          "local-controller",
+          "localhost"
         ],
         "codex_ready": true,
         "small_gpu_ok": true
       },
-      "ECO01": {
+      "gpu-worker-02": {
         "mode": "dispatch",
         "roles": [
-          "gpu_train"
+          "remote_gpu_train"
         ],
-        "ssh_target": "ECO01",
+        "ssh_target": "gpu-worker-02",
         "project_root": "/data/AutoOpt/Arab",
         "workspace_root": "/data/AutoOpt",
         "conda_env_name": "AutoOPT",
@@ -75,12 +72,12 @@
           ]
         }
       },
-      "ECO04": {
+      "gpu-worker-03": {
         "mode": "dispatch",
         "roles": [
-          "gpu_train"
+          "remote_gpu_train"
         ],
-        "ssh_target": "ECO04",
+        "ssh_target": "gpu-worker-03",
         "project_root": "/data/AutoOpt/Arab",
         "workspace_root": "/data/AutoOpt",
         "conda_env_name": "AutoOPT",
@@ -99,12 +96,12 @@
           ]
         }
       },
-      "ECOschool": {
+      "gpu-worker-01": {
         "mode": "dispatch",
         "roles": [
-          "gpu_train"
+          "remote_gpu_train"
         ],
-        "ssh_target": "ECOschool",
+        "ssh_target": "gpu-worker-01",
         "project_root": "/data/AutoOpt/Arab",
         "workspace_root": "/data/AutoOpt",
         "conda_env_name": "AutoOPT",

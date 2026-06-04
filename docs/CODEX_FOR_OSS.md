@@ -30,6 +30,26 @@ AutoOpt has several maintainer tasks that are well suited to Codex:
 6. Producing examples and documentation for new ML workflows.
 7. Generating migration guides as project contracts evolve.
 
+## Application fit
+
+AutoOpt is a good fit for the Codex for Open Source program when the application emphasizes maintainer workflow rather than popularity metrics.
+
+Current strengths:
+
+- public MIT-licensed repository
+- clear Codex-assisted maintainer roadmap
+- deterministic smoke test and CI workflow
+- explicit data, credential, and human-gate policies
+- OpenAI Responses worker boundary that can use API credits for core OSS maintenance work
+
+Current limitations:
+
+- early project with low public adoption
+- no package download history yet
+- limited community activity until more issues, examples, and releases exist
+
+The application should be accurate about those limitations and explain why the project is still OSS-relevant: AutoOpt addresses the common maintainer problem of making AI coding-agent work reproducible, inspectable, and bounded by evaluation contracts.
+
 ## Safety model
 
 AutoOpt should treat a coding agent as a bounded maintainer assistant, not as the owner of the project objective.
@@ -74,6 +94,18 @@ A recommended workflow is:
 - Add a GitHub Actions example that runs a small AutoOpt workflow on pull requests.
 - Add deterministic examples that do not require private data or internal infrastructure.
 - Add PR-review checklists for high-risk changes.
+
+## API credit use
+
+API credits should be used only for project maintenance workflows, such as:
+
+- running the OpenAI Responses worker against public AutoOpt issues and PRs
+- generating structured decisions for bounded tool calls
+- reviewing changes to state transitions, schema rules, and safety gates
+- drafting migration notes for contract and project file changes
+- maintaining examples and documentation
+
+Do not submit confidential information in the application, and do not store personal email addresses, OpenAI organization IDs, API keys, or private infrastructure details in this repository.
 
 ## Why this is OSS-relevant
 

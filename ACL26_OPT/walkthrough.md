@@ -2,7 +2,7 @@
 
 ## Mission
 
-把 `/data/lv.xiaolei/ACL26_ADI` 包装成一个 AutoOpt 可以持续推进的 **ADI-only** 项目层，并冻结第一版可认真提分的 `acoustic-only` 正式协议。
+把 `/data/autoopt-workspace/ACL26_ADI` 包装成一个 AutoOpt 可以持续推进的 **ADI-only** 项目层，并冻结第一版可认真提分的 `acoustic-only` 正式协议。
 
 ## Scope
 
@@ -10,8 +10,8 @@
 - 以 `ACL/` 目录为主
 - 暂时不接入根目录里那条 `Fusion-GEC` / `ASR correction` 叙事
 - `Local` 是最终 gold eval，永不进入训练
-- 第一版正式 recipe 在 `ECOschool` 上跑
-- `Physical13` 负责 diagnosis、formal dev、Local gold final gate
+- 第一版正式 recipe 在 `gpu-worker-01` 上跑
+- `local-controller` 负责 diagnosis、formal dev、Local gold final gate
 
 ## What We Already Know
 
@@ -25,7 +25,7 @@
 
 1. 冻结 `acoustic_only_baseline_v1`
 2. 定义 `acoustic_pilot` non-smoke recipe
-3. 在 `ECOschool` 上补齐 conda、tmux、GPU 和 pilot 数据子集
+3. 在 `gpu-worker-01` 上补齐 conda、tmux、GPU 和 pilot 数据子集
 4. 提交 `tmux` 后台训练
 5. 在 `formal_dev` 上做独立评测
 6. 在 `Local gold` 上做最终 gate
@@ -35,7 +35,7 @@
 
 - 如果 `ACL/` 与根目录配置冲突且短时间无法判定真主线，停到 handoff
 - 如果正式评测协议被改动，停到 handoff
-- 如果 `ECOschool` 缺少 conda、tmux、GPU 或 pilot 数据，停到 handoff
+- 如果 `gpu-worker-01` 缺少 conda、tmux、GPU 或 pilot 数据，停到 handoff
 - 如果有人要求把 `Local` 或 `ADI5` 上游池直接并入训练，停到 handoff
 
 ## Next After Pilot

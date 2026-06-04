@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONDA_BIN="${CONDA_BIN:-/home/user/miniconda3/bin/conda}"
+CONDA_BIN="${CONDA_BIN:-/opt/conda/bin/conda}"
 ENV_NAME="${1:-AutoOpt}"
-DATA_ROOT="${2:-/data/lv.xiaolei/ACL26_ADI/Data}"
+DATA_ROOT="${2:-/data/autoopt-workspace/ACL26_ADI/Data}"
 
 if [ ! -x "$CONDA_BIN" ]; then
   echo "conda not found at $CONDA_BIN" >&2

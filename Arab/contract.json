@@ -45,23 +45,23 @@
       "gpu-batch"
     ],
     "allowed_hosts": [
-      "Physical13",
-      "ECO01",
-      "ECO04",
-      "ECOschool"
+      "local-controller",
+      "gpu-worker-02",
+      "gpu-worker-03",
+      "gpu-worker-01"
     ],
     "host_capabilities": {
-      "ECO01": {
+      "gpu-worker-02": {
         "gpu_type": "A100",
         "gpu_count": 8,
         "shared_storage_root": "/data"
       },
-      "ECO04": {
+      "gpu-worker-03": {
         "gpu_type": "A100",
         "gpu_count": 8,
         "shared_storage_root": "/data"
       },
-      "ECOschool": {
+      "gpu-worker-01": {
         "gpu_type": "A100",
         "gpu_count": 8,
         "shared_storage_root": "/data"

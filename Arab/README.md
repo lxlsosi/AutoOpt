@@ -2,23 +2,14 @@
 
 这是一个专项模板，演示如何把通用 `AutoOpt` 框架落到“阿拉伯语方言分类”场景。
 
-这个版本已经内置一套机器拓扑：
+这个版本默认使用本地可运行拓扑：
 
-- `Physical13`: 控制机，负责跑 Codex / orchestrator，也能跑小规模 GPU 验证
-- `ECO01`
-- `ECO04`
-- `ECOschool`
+- `local-controller`: 控制机，负责跑 Codex / orchestrator、数据步骤、mock 训练和评测
+- `gpu-worker-01` / `gpu-worker-02` / `gpu-worker-03`: 可选远端占位示例，不会被默认 quickstart 调用
 
-目前配置按你最新补充的信息处理成：
+默认 quickstart 不需要 SSH、GPU、私有共享盘或远端 conda 环境。远端 worker 配置只用于展示 `execution_topology` 的扩展方式。
 
-- 三台 GPU 机都看作 `8 x A100`
-- 三台机器共享 `/data` 盘
-- 远端 workspace 默认放在 `/data/AutoOpt`
-- 远端项目目录默认放在 `/data/AutoOpt/Arab`
-
-这意味着代码和数据同步是“共享盘优先”的，一份同步可被三台机器复用；conda 环境仍然会在每台机器上各自创建和校准。
-
-框架会把每一步执行目标写进 job state 的 `execution_history`。当前 demo 里训练脚本还是 mock，但接口已经换成真实可路由的形态了。
+框架会把每一步执行目标写进 job state 的 `execution_history`。当前 demo 里训练脚本是 mock，目的是让 orchestrator、state、artifact contract 和人工 gate 可以在本地稳定验证。
 
 ## 这个示例做了什么
 
@@ -45,17 +36,15 @@ autoopt run --project Arab/project.json --job-id arab-demo --max-turns 12
 autoopt inspect --project Arab/project.json --job-id arab-demo
 ```
 
-如果你要先把三台 GPU 机预热好，建议先在 `Physical13` 上执行：
+如果你要试验远端 dispatch，可以先把 `project.json` 中的 `gpu_train` routing profile 改到某个 `remote_gpu_train` host，然后在 `local-controller` 上执行：
 
 ```bash
-autoopt remote bootstrap --project Arab/project.json --host ECO01
-autoopt remote bootstrap --project Arab/project.json --host ECO04
-autoopt remote bootstrap --project Arab/project.json --host ECOschool
+autoopt remote bootstrap --project Arab/project.json --host gpu-worker-02
+autoopt remote bootstrap --project Arab/project.json --host gpu-worker-03
+autoopt remote bootstrap --project Arab/project.json --host gpu-worker-01
 ```
 
-这会按 `runtime.source_conda_env=AutoOPT` 导出一个可迁移的 conda 规范，然后同步代码/数据到 `/data/AutoOpt`，并在目标机器上创建或更新 `AutoOPT` conda 环境。
-
-现在的训练链路也已经升级成后台 job 模式：
+远端训练链路支持后台 job 模式：
 
 - 第一次 `run` 会提交远端训练
 - 训练进程会挂在远端 `tmux` session 中

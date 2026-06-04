@@ -38,7 +38,7 @@ def main() -> None:
         "Compare the serious acoustic-only baseline against the Local gold final gate before enabling any transcript-assisted track.",
     ]
     if not source_link.get("shared_source_ready_for_eco", False):
-        next_steps.append("Stage ACL26_ADI training data to TOS with rclone and materialize it under /data before routing large compute to ECO machines.")
+        next_steps.append("Stage ACL26_ADI training data to object storage with rclone and materialize it under /data before routing large compute to ECO machines.")
 
     reflection = {
         "task_name": task_definition["task_name"],
@@ -53,7 +53,7 @@ def main() -> None:
             "The shard-indexed loader is in place, but full-recipe throughput on ECO still needs measurement before scaling beyond the first serious baseline.",
             "ADI17 has no native text field, so the transcript-assisted semantic branch remains intentionally disabled.",
             "Graylist datasets MGB3 and MGB5 cannot enter the automated loop until their labels are proven.",
-            "Large ECO training still depends on valid rclone/TOS credentials plus one-time data staging under /data."
+            "Large ECO training still depends on valid rclone/object storage credentials plus one-time data staging under /data."
         ],
         "next_steps": next_steps,
     }

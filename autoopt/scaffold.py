@@ -50,24 +50,25 @@ def init_linked_project(
             "remote_env_export_strategy": "from-history",
         },
         "execution_topology": {
-            "controller_host": "Physical13",
-            "default_local_host": "Physical13",
-            "default_compute_hosts": ["ECO01", "ECO04", "ECOschool"],
+            "controller_host": "local-controller",
+            "default_local_host": "local-controller",
+            "default_compute_hosts": ["gpu-worker-02", "gpu-worker-03", "gpu-worker-01"],
             "routing_profiles": {
-                "repo_diagnose": ["Physical13"],
-                "evaluation": ["Physical13"],
-                "gpu_train": ["ECO01", "ECO04", "ECOschool"],
+                "repo_diagnose": ["local-controller"],
+                "evaluation": ["local-controller"],
+                "gpu_train": ["gpu-worker-02", "gpu-worker-03", "gpu-worker-01"],
             },
             "hosts": {
-                "Physical13": {
+                "local-controller": {
                     "mode": "local",
+                    "ssh_target": "local",
                     "roles": ["controller", "diagnose", "evaluation"],
-                    "local_aliases": ["Physical13", "physical13"],
+                    "local_aliases": ["local-controller", "localhost"],
                 },
-                "ECO01": {
+                "gpu-worker-02": {
                     "mode": "dispatch",
                     "roles": ["gpu_train"],
-                    "ssh_target": "ECO01",
+                    "ssh_target": "gpu-worker-02",
                     "project_root": f"/data/AutoOpt/{project_dir.name}",
                     "workspace_root": "/data/AutoOpt",
                     "conda_env_name": "AutoOPT",
@@ -83,10 +84,10 @@ def init_linked_project(
                         ]
                     },
                 },
-                "ECO04": {
+                "gpu-worker-03": {
                     "mode": "dispatch",
                     "roles": ["gpu_train"],
-                    "ssh_target": "ECO04",
+                    "ssh_target": "gpu-worker-03",
                     "project_root": f"/data/AutoOpt/{project_dir.name}",
                     "workspace_root": "/data/AutoOpt",
                     "conda_env_name": "AutoOPT",
@@ -102,10 +103,10 @@ def init_linked_project(
                         ]
                     },
                 },
-                "ECOschool": {
+                "gpu-worker-01": {
                     "mode": "dispatch",
                     "roles": ["gpu_train"],
-                    "ssh_target": "ECOschool",
+                    "ssh_target": "gpu-worker-01",
                     "project_root": f"/data/AutoOpt/{project_dir.name}",
                     "workspace_root": "/data/AutoOpt",
                     "conda_env_name": "AutoOPT",
@@ -181,7 +182,7 @@ def init_linked_project(
         },
         "compute_policy": {
             "allowed_backends": ["local", "tmux-ssh"],
-            "allowed_hosts": ["Physical13", "ECO01", "ECO04", "ECOschool"],
+            "allowed_hosts": ["local-controller", "gpu-worker-02", "gpu-worker-03", "gpu-worker-01"],
             "max_gpu_hours": 0,
             "max_total_budget": 0,
         },
@@ -210,7 +211,7 @@ def init_linked_project(
 1. 确认训练入口和评测入口
 2. 确认依赖管理方式
 3. 确认需要保留的 benchmark / config / checkpoint 路径
-4. 确认哪些动作应该留在 Physical13，哪些动作应该发到 ECO 机器
+4. 确认哪些动作应该留在 local-controller，哪些动作应该发到 ECO 机器
 5. 用真实脚本替换 `scripts/diagnose.py` 之外的 scaffold
 """
 

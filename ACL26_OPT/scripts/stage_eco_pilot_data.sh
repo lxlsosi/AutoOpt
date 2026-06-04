@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TARGET_HOST="${1:-ECOschool}"
-SOURCE_ROOT="${2:-/data/lv.xiaolei/ACL26_ADI}"
-TARGET_ROOT="${3:-/data/lv.xiaolei/ACL26_ADI}"
+TARGET_HOST="${1:-gpu-worker-01}"
+SOURCE_ROOT="${2:-/data/autoopt-workspace/ACL26_ADI}"
+TARGET_ROOT="${3:-/data/autoopt-workspace/ACL26_ADI}"
 ADI17_TRAIN_SHARDS="${ADI17_TRAIN_SHARDS:-4}"
 ADI17_TRAIN_SAMPLES_PER_FILE="${ADI17_TRAIN_SAMPLES_PER_FILE:-1500}"
 MGB2_TRAIN_FILES="${MGB2_TRAIN_FILES:-30}"
@@ -19,7 +19,7 @@ fi
 rm -rf "$STAGE_ROOT"
 mkdir -p "$STAGE_ROOT"
 
-/home/user/miniconda3/bin/conda run -n AutoOpt python ACL26_OPT/scripts/build_eco_pilot_stage.py \
+${CONDA_BIN:-/opt/conda/bin/conda} run -n AutoOpt python ACL26_OPT/scripts/build_eco_pilot_stage.py \
   --source-root "$SOURCE_ROOT" \
   --stage-root "$STAGE_ROOT" \
   --adi17-train-shards "$ADI17_TRAIN_SHARDS" \

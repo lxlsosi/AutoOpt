@@ -4,16 +4,17 @@ set -euo pipefail
 ACTION="${1:-verify}"
 DATASET_SELECTOR="${2:-ALL}"
 RCLONE_BIN="${RCLONE_BIN:-$(command -v rclone || true)}"
-RCLONE_REMOTE="${RCLONE_REMOTE:-volctos}"
-TOS_BUCKET="${TOS_BUCKET:-momo-test-a100-02}"
-TOS_PREFIX="${TOS_PREFIX:-datasets/lv.xiaolei/ACL26_ADI/Data}"
-SOURCE_DATA_ROOT="${SOURCE_DATA_ROOT:-/data/lv.xiaolei/ACL26_ADI/Data}"
-TARGET_DATA_ROOT="${TARGET_DATA_ROOT:-/data/lv.xiaolei/ACL26_ADI/Data}"
+RCLONE_REMOTE="${RCLONE_REMOTE:-objectstore}"
+TOS_BUCKET="${TOS_BUCKET:-example-autoopt-bucket}"
+TOS_PREFIX="${TOS_PREFIX:-datasets/autoopt-workspace/ACL26_ADI/Data}"
+SOURCE_DATA_ROOT="${SOURCE_DATA_ROOT:-/data/autoopt-workspace/ACL26_ADI/Data}"
+TARGET_DATA_ROOT="${TARGET_DATA_ROOT:-/data/autoopt-workspace/ACL26_ADI/Data}"
 RCLONE_TRANSFERS="${RCLONE_TRANSFERS:-16}"
 RCLONE_CHECKERS="${RCLONE_CHECKERS:-16}"
 RCLONE_BUFFER_SIZE="${RCLONE_BUFFER_SIZE:-128M}"
 RCLONE_EXTRA_FLAGS="${RCLONE_EXTRA_FLAGS:-}"
 DRY_RUN="${DRY_RUN:-0}"
+STAGE_PROFILE="${STAGE_PROFILE:-all}"
 
 usage() {
   cat <<'EOF'
@@ -24,11 +25,12 @@ Usage:
   stage_acl26_via_rclone.sh sync [ADI17|MGB2_parquet|ALL]
 
 Environment:
-  RCLONE_REMOTE=volctos
-  TOS_BUCKET=momo-test-a100-02
-  TOS_PREFIX=datasets/lv.xiaolei/ACL26_ADI/Data
-  SOURCE_DATA_ROOT=/data/lv.xiaolei/ACL26_ADI/Data
-  TARGET_DATA_ROOT=/data/lv.xiaolei/ACL26_ADI/Data
+  STAGE_PROFILE=all|train_only
+  RCLONE_REMOTE=objectstore
+  TOS_BUCKET=example-autoopt-bucket
+  TOS_PREFIX=datasets/autoopt-workspace/ACL26_ADI/Data
+  SOURCE_DATA_ROOT=/data/autoopt-workspace/ACL26_ADI/Data
+  TARGET_DATA_ROOT=/data/autoopt-workspace/ACL26_ADI/Data
 EOF
 }
 
@@ -61,6 +63,14 @@ case "$DATASET_SELECTOR" in
     ;;
 esac
 
+case "$STAGE_PROFILE" in
+  all|train_only) ;;
+  *)
+    echo "unsupported STAGE_PROFILE: $STAGE_PROFILE" >&2
+    exit 1
+    ;;
+esac
+
 remote_uri() {
   local relative_path="$1"
   printf '%s:%s/%s/%s' "$RCLONE_REMOTE" "$TOS_BUCKET" "$TOS_PREFIX" "$relative_path"
@@ -70,6 +80,40 @@ local_dataset_root() {
   local dataset_name="$1"
   local base_root="$2"
   printf '%s/%s' "$base_root" "$dataset_name"
+}
+
+dataset_subpath() {
+  local dataset_name="$1"
+  if [ "$STAGE_PROFILE" = "train_only" ]; then
+    case "$dataset_name" in
+      ADI17)
+        printf 'ADI17/data'
+        return
+        ;;
+      MGB2_parquet)
+        printf 'MGB2_parquet/train'
+        return
+        ;;
+    esac
+  fi
+  printf '%s' "$dataset_name"
+}
+
+dataset_include_pattern() {
+  local dataset_name="$1"
+  if [ "$STAGE_PROFILE" = "train_only" ]; then
+    case "$dataset_name" in
+      ADI17)
+        printf 'train-*.parquet'
+        return
+        ;;
+      MGB2_parquet)
+        printf '*.parquet'
+        return
+        ;;
+    esac
+  fi
+  printf ''
 }
 
 copy_flags=(
@@ -90,35 +134,50 @@ if [ -n "$RCLONE_EXTRA_FLAGS" ]; then
   copy_flags+=("${extra_flags[@]}")
 fi
 
-echo "verifying TOS access: ${RCLONE_REMOTE}:${TOS_BUCKET}"
+echo "verifying object storage access: ${RCLONE_REMOTE}:${TOS_BUCKET}"
 "$RCLONE_BIN" lsd "${RCLONE_REMOTE}:${TOS_BUCKET}" >/dev/null
 
 run_upload() {
   local dataset_name="$1"
-  local source_root
-  source_root="$(local_dataset_root "$dataset_name" "$SOURCE_DATA_ROOT")"
+  local source_root remote_root include_pattern
+  source_root="${SOURCE_DATA_ROOT}/$(dataset_subpath "$dataset_name")"
+  remote_root="$(remote_uri "$(dataset_subpath "$dataset_name")")"
+  include_pattern="$(dataset_include_pattern "$dataset_name")"
   if [ ! -d "$source_root" ]; then
     echo "source dataset path missing: $source_root" >&2
     exit 3
   fi
-  echo "uploading $dataset_name from $source_root to $(remote_uri "$dataset_name")"
-  "$RCLONE_BIN" "${copy_flags[@]}" "$source_root" "$(remote_uri "$dataset_name")"
+  echo "profile=$STAGE_PROFILE"
+  echo "uploading $dataset_name from $source_root to $remote_root"
+  if [ -n "$include_pattern" ]; then
+    "$RCLONE_BIN" "${copy_flags[@]}" "--include=$include_pattern" "$source_root" "$remote_root"
+  else
+    "$RCLONE_BIN" "${copy_flags[@]}" "$source_root" "$remote_root"
+  fi
 }
 
 run_materialize() {
   local dataset_name="$1"
-  local target_root
-  target_root="$(local_dataset_root "$dataset_name" "$TARGET_DATA_ROOT")"
+  local target_root remote_root include_pattern
+  target_root="${TARGET_DATA_ROOT}/$(dataset_subpath "$dataset_name")"
+  remote_root="$(remote_uri "$(dataset_subpath "$dataset_name")")"
+  include_pattern="$(dataset_include_pattern "$dataset_name")"
   mkdir -p "$target_root"
-  echo "materializing $dataset_name from $(remote_uri "$dataset_name") to $target_root"
-  "$RCLONE_BIN" "${copy_flags[@]}" "$(remote_uri "$dataset_name")" "$target_root"
+  echo "profile=$STAGE_PROFILE"
+  echo "materializing $dataset_name from $remote_root to $target_root"
+  if [ -n "$include_pattern" ]; then
+    "$RCLONE_BIN" "${copy_flags[@]}" "--include=$include_pattern" "$remote_root" "$target_root"
+  else
+    "$RCLONE_BIN" "${copy_flags[@]}" "$remote_root" "$target_root"
+  fi
 }
 
 run_verify() {
   local dataset_name="$1"
   local remote_root target_root file_count
-  remote_root="$(remote_uri "$dataset_name")"
-  target_root="$(local_dataset_root "$dataset_name" "$TARGET_DATA_ROOT")"
+  remote_root="$(remote_uri "$(dataset_subpath "$dataset_name")")"
+  target_root="${TARGET_DATA_ROOT}/$(dataset_subpath "$dataset_name")"
+  echo "profile=$STAGE_PROFILE"
   echo "dataset=$dataset_name"
   echo "remote_root=$remote_root"
   "$RCLONE_BIN" lsd "$remote_root" | head -20 || true

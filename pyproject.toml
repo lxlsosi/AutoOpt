@@ -5,10 +5,26 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "autoopt"
 version = "0.1.0"
-description = "Checkpointed autonomous algorithm engineer framework"
+description = "Checkpointed orchestration for evaluation-constrained AI coding agents"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
+license = {text = "MIT"}
+keywords = ["ai-agents", "codex", "mlops", "orchestration", "evaluation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.urls]
+Homepage = "https://github.com/lxlsosi/AutoOpt"
+Repository = "https://github.com/lxlsosi/AutoOpt"
+Issues = "https://github.com/lxlsosi/AutoOpt/issues"
 
 [project.scripts]
 autoopt = "autoopt.cli:main"

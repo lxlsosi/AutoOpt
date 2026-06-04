@@ -1,7 +1,7 @@
 {
   "project_id": "acl26-adi-opt",
   "objective": "Adapt ACL26_ADI into an AutoOpt-managed Arabic Dialect Identification project with a clean ADI-only optimization loop.",
-  "goal": "Freeze the first serious acoustic-only ADI baseline on ECOschool, evaluate it on a frozen formal dev suite, and treat the Local gold evaluation set as the final success gate.",
+  "goal": "Freeze the first serious acoustic-only ADI baseline on gpu-worker-01, evaluate it on a frozen formal dev suite, and treat the Local gold evaluation set as the final success gate.",
   "success_metrics": [
     {
       "name": "adaptation_readiness",
@@ -38,7 +38,7 @@
     "Do not mutate ACL26_ADI blindly; prefer wrappers and mirrored configs first.",
     "Use conda env AutoOpt for project execution.",
     "Checkpoint after every orchestration turn.",
-    "Do not stage large training data with rsync/scp; prefer rclone -> TOS -> /data for A100 hosts.",
+    "Do not stage large training data with rsync/scp; prefer rclone -> object storage -> /data for A100 hosts.",
     "Local gold is evaluation-only and must never be used for training.",
     "ADI5 upstream pools remain blocked for training until exact overlap removal is implemented."
   ],
@@ -58,10 +58,10 @@
       "tmux-ssh"
     ],
     "allowed_hosts": [
-      "Physical13",
-      "ECO01",
-      "ECO04",
-      "ECOschool"
+      "local-controller",
+      "gpu-worker-02",
+      "gpu-worker-03",
+      "gpu-worker-01"
     ],
     "max_gpu_hours": 200,
     "max_total_budget": 0
