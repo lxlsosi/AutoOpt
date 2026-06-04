@@ -1,40 +1,39 @@
 # AutoOpt
 
-`AutoOpt` 是一个“外部状态机 + 短 agent turn + 外部数据/算力适配器 + 强评测约束”的自动算法工程师骨架。它默认先用规则型 worker 跑通链路，后续你可以把同样的 contract、state、tool registry 接到真实的 Codex / OpenAI Responses worker 上。
+AutoOpt is an open-source orchestration framework for evaluation-constrained AI coding agents in machine learning and algorithm engineering workflows.
 
-## 核心思路
+It is designed for maintainers who want AI agents to help diagnose, implement, evaluate, and document iterative algorithm improvements without losing reproducibility, changing the project goal implicitly, or bypassing human review.
 
-- 任务本体在你自己的状态库里，不在 LLM thread 里。
-- 每个 turn 只做一小步，并且每步后 checkpoint。
-- 算法训练和数据处理是外部 job，agent 负责发起、轮询、分析、决策。
-- `walkthrough.md` 是项目 contract 的自然语言补充，不是随手记 TODO。
-- 达到人工 Gate 时，系统自动停到 `handoff`。
+## Why AutoOpt exists
 
-## 目录
+Long-running ML and algorithm work does not fit well into a single chat thread. Useful progress depends on durable state, frozen evaluation sets, logs, metrics, checkpoints, compute budgets, and repeatable handoffs between humans and tools.
 
-```text
-autoopt/                  Python 框架
-docs/                     架构说明
-templates/                通用项目模板
-Arab/                     阿语方言分类专项示例
-walkthrough.md            根目录 walkthrough 模板
-```
+AutoOpt treats an agent workflow as a state machine rather than a long conversation:
 
-## 关键对象
+- The project objective lives in a stable contract, not only in model context.
+- Each agent turn performs a bounded step and leaves a checkpoint.
+- Training, data processing, and evaluation run as external jobs.
+- The agent proposes, executes, polls, evaluates, and reflects through explicit tools.
+- Risky actions stop at a human gate.
 
-- `contract.json`: 项目目标、预算、约束、评测、数据策略、人工闸门
-- `project.json`: tool registry、phase 规则、运行时配置
-- `execution_topology`: 控制机、执行机、路由 profile、主机角色
-- `JobState`: 任务状态，持久化在 `<project>/.autoopt/jobs/<job_id>.json`
-- `artifacts/`: 数据、分析、训练、评测产物
+## Core concepts
 
-## 状态流
+| Concept | Purpose |
+| --- | --- |
+| `contract.json` | Stable project goal, metrics, constraints, data policy, compute policy, and human gates. |
+| `project.json` | Tool registry, runtime configuration, decision rules, and execution topology. |
+| `walkthrough.md` | Human-readable project context and operating notes. |
+| `JobState` | Persistent state for each optimization job. |
+| `artifacts/` | Data manifests, analysis reports, metrics, logs, checkpoints, and summaries. |
+| `execution_topology` | Separation between controller hosts and compute workers. |
+
+## State flow
 
 ```text
 queued -> diagnose -> propose -> execute -> evaluate -> reflect -> handoff/done/failed
 ```
 
-## 快速开始
+## Quickstart
 
 ```bash
 python3 -m venv .venv
@@ -43,88 +42,69 @@ pip install -e .
 
 autoopt run --project Arab/project.json --job-id arab-demo --max-turns 12
 autoopt inspect --project Arab/project.json --job-id arab-demo
-autoopt remote bootstrap --project Arab/project.json --host ECO01
-autoopt project init-linked --name "My Project" --target-dir ./MyProject --external-project /path/to/external/repo
+autoopt project init-linked \
+  --name "My Project" \
+  --target-dir ./MyProject \
+  --external-project /path/to/external/repo
 ```
 
-上面的 `Arab/` 是一个可本地跑通的 mock 项目。它会生成以下几类 artifact：
+The bundled `Arab/` directory is a small demonstration project. It is intended to exercise the orchestration layer and generate local artifacts such as:
 
 - `artifacts/data/*.json`
 - `artifacts/analysis/*.json`
 - `artifacts/metrics/*.json`
 - `.autoopt/jobs/*.json`
 
-## 后续如何接真实 Codex / OpenAI
+## Agent worker model
 
-默认 worker 是 `rule-based`，用于把 orchestration 骨架跑通。之后你可以切到：
+The default worker is rule-based so that the workflow contract, state transitions, artifact protocol, and tool registry can be validated before introducing model-driven behavior.
+
+The same framework can be connected to a Codex-style or OpenAI Responses worker through a stable interface:
 
 ```bash
 OPENAI_API_KEY=... autoopt run \
   --project Arab/project.json \
   --job-id arab-openai \
   --worker openai \
-  --model gpt-5.4
+  --model <model-name>
 ```
 
-当前仓库里的 `OpenAIResponsesWorker` 是一个最小骨架：
+The intended model-worker contract is:
 
-- 输入是外部持久化的 state + contract + walkthrough + tool registry
-- 输出是结构化 JSON 决策
-- 默认 `store=false`
-- 预留了 `context_management` compaction 参数
+- input: externalized state, project contract, walkthrough, and tool registry
+- output: structured decisions and bounded tool calls
+- storage: explicit project artifacts, not hidden conversation memory
+- safety: approval gates for evaluation, data, compute, and release-critical changes
 
-## 控制机与 GPU 执行机
+## Execution topology
 
-推荐把 `AutoOpt` 按“两层”部署：
+AutoOpt separates control and execution:
 
-- 控制层：在装好 Codex / OpenAI 凭证的机器上跑 `autoopt run`
-- 执行层：把真正的数据处理、训练、验证任务路由到指定机器
+- **Controller**: runs the orchestrator, worker, state store, and summaries.
+- **Execution workers**: run data processing, training, evaluation, or long-running jobs.
 
-框架现在支持在 `project.json` 里声明 `execution_topology`，并把每次工具调用的目标机写入 state。
+Example topology:
 
-对于 compute 工具，执行器会在本地运行你的包装脚本，同时注入这些占位符：
-
-- `{execution_host}`
-- `{execution_mode}`
-- `{execution_project_root}`
-- `{ssh_target}`
-
-以及对应环境变量：
-
-- `AUTOOPT_EXECUTION_HOST`
-- `AUTOOPT_EXECUTION_MODE`
-- `AUTOOPT_EXECUTION_PROJECT_ROOT`
-- `AUTOOPT_SSH_TARGET`
-
-这样你可以在 `Physical13` 上跑 orchestrator，再由脚本决定是本地小规模验证，还是通过 `ssh` / 队列系统把训练提交到 `ECO01`、`ECO04`、`ECOschool`。
-
-建议第一次先在 `Physical13` 上执行：
-
-```bash
-autoopt remote bootstrap --project Arab/project.json --host ECO01
-autoopt remote bootstrap --project Arab/project.json --host ECO04
-autoopt remote bootstrap --project Arab/project.json --host ECOschool
+```json
+{
+  "execution_topology": {
+    "controller_host": "controller-01",
+    "default_local_host": "controller-01",
+    "default_compute_hosts": ["gpu-worker-01", "gpu-worker-02"],
+    "routing_profiles": {
+      "data_ops": ["controller-01"],
+      "evaluation": ["controller-01"],
+      "gpu_train": ["gpu-worker-01", "gpu-worker-02"]
+    }
+  }
+}
 ```
 
-这会做三件事：
+For long-running jobs, AutoOpt should submit a background job, store a job handle in state, poll in a later turn, and collect logs, checkpoints, and metrics before moving to evaluation.
 
-- 按 `runtime.source_conda_env` 导出一个更适合跨 GPU 机器复用的 conda 规范
-- 同步代码和项目数据到远端 workspace
-- 在远端创建或更新同名 conda env
+## Adapting a real project
 
-对于 `compute` 工具，当前框架已经不是“SSH 上去前台直接跑”，而是：
-
-- 先提交远端后台 job
-- 在远端 `tmux` session 里承载训练进程
-- 在 state 里记录 `pending_jobs`
-- 后续 `autoopt run` 自动 poll
-- 自动同步 `stdout.log`、`stderr.log`、launcher log、checkpoint 和 result json
-
-## 适配别的项目
-
-可以。比较推荐的方式不是直接把外部工程塞进 `Arab/`，而是在当前 workspace 下新建一个和 `Arab/` 同级的 AutoOpt 项目目录，再把外部工程软链接进去。
-
-现在已经有一个初始化命令：
+A recommended pattern is to keep AutoOpt as the control plane and link an existing training or algorithm project into a new AutoOpt project directory:
 
 ```bash
 autoopt project init-linked \
@@ -133,23 +113,42 @@ autoopt project init-linked \
   --external-project /absolute/path/to/real/project
 ```
 
-它会：
+This creates:
 
-- 新建一个 AutoOpt 项目目录
-- 在里面创建 `source_project -> /absolute/path/to/real/project` 软链接
-- 生成 `project.json`、`contract.json`、`walkthrough.md`
-- 生成一个最小的 `scripts/diagnose.py`
+- `project.json`
+- `contract.json`
+- `walkthrough.md`
+- a minimal diagnostic script
+- a `source_project` link to the real project
 
-然后你就可以在这个新目录里继续让 Codex 做“项目适配”，把 scaffold 替换成真实的训练/评测逻辑。
+Then maintainers can let an AI worker adapt wrappers, adapters, decision rules, and reporting logic without immediately modifying the core training project.
 
-为了支持这个模式，远端同步现在会对配置中的软链接路径自动 `follow symlink`，也就是把真实工程内容同步到 `ECO` 机器，而不是把一个失效的软链接原样复制过去。
+## Safety principles
 
-## 你接真实项目时的建议
+AutoOpt is designed around conservative agent automation:
 
-1. 先复制 `templates/` 的模板，补出自己的 `contract.json`、`project.json`、`walkthrough.md`。
-2. 把 `tool_registry` 里的 shell 命令换成你们实际的数据平台、GPU 平台、评测脚本。
-3. 把 mock `train.py` 替换成真实提交训练任务的命令，例如 Slurm、K8s、Ray、Airflow 或内部平台 CLI。
-4. 冻结 gold eval，严禁 agent 改测试集。
-5. 给高风险动作加 `requires_approval=true` 或 contract 里的人工 Gate。
+1. Freeze the objective and evaluation suite before optimization.
+2. Record every turn, tool call, artifact, metric, and failure path.
+3. Require explicit approval before changing labels, test sets, budgets, or release-critical behavior.
+4. Treat the agent as a bounded proposer/executor, not the owner of the project goal.
+5. Keep reproducible artifacts outside the model thread.
 
-更多细节见 [docs/ARCHITECTURE.md](/Users/momo/Git/AutoOpt/docs/ARCHITECTURE.md)。
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Codex for OSS preparation](docs/CODEX_FOR_OSS.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+
+## Roadmap
+
+- Add an OpenAI Responses worker implementation behind a stable worker interface.
+- Add JSON Schema validation for `contract.json` and `project.json`.
+- Add golden tests for state-machine transitions.
+- Add Slurm, Ray, Kubernetes, and GitHub Actions adapter examples.
+- Add deterministic OSS examples that do not depend on private data or internal infrastructure.
+- Add PR-review helpers for risky changes to evaluation and budget logic.
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
